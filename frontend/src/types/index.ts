@@ -31,6 +31,7 @@ export interface LobbyState {
   lobby_id: string
   lobby_code: string
   status: 'waiting' | 'active' | 'ended'
+  owner_id: string | null
   players: Player[]
   my_cards: Card[]
   game_history: GameAction[]
@@ -44,6 +45,7 @@ export interface LobbyResponse {
   id: string
   code: string
   status: string
+  owner_id: string | null
   created_at: string
   expires_at: string
   player_count: number

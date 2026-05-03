@@ -35,6 +35,7 @@ async def create_lobby(
         id=lobby.id,
         code=lobby.code,
         status=lobby.status,
+        owner_id=lobby.owner_id,
         created_at=lobby.created_at,
         expires_at=lobby.expires_at,
         player_count=0
@@ -80,6 +81,7 @@ async def get_lobby(
         id=lobby.id,
         code=lobby.code,
         status=lobby.status,
+        owner_id=lobby.owner_id,
         created_at=lobby.created_at,
         expires_at=lobby.expires_at,
         player_count=player_count
@@ -107,6 +109,7 @@ async def list_active_lobbies(
                 id=lobby.id,
                 code=lobby.code,
                 status=lobby.status,
+                owner_id=lobby.owner_id,
                 created_at=lobby.created_at,
                 expires_at=lobby.expires_at,
                 player_count=player_count
@@ -157,6 +160,15 @@ async def join_lobby(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Lobby is full"
         )
+    
+    # Check if username is already taken
+    current_players = await service.get_lobby_players(lobby.id)
+    for player in current_players:
+        if player.username.lower() == join_data.username.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Username '{join_data.username}' is already taken in this lobby"
+            )
     
     # Create or get player
     player = Player(username=join_data.username)

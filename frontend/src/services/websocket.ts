@@ -125,6 +125,13 @@ class WebSocketService {
   }
 
   /**
+   * Start the game
+   */
+  startGame(): void {
+    this.send({ type: 'start_game' })
+  }
+
+  /**
    * Play a card
    */
   playCard(cardId: string, targetPlayerId: string): void {

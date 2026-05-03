@@ -50,6 +50,11 @@ class Lobby(Base):
     )
     code: Mapped[str] = mapped_column(String(6), unique=True, index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    owner_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("players.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
@@ -65,6 +70,7 @@ class Lobby(Base):
         back_populates="lobby",
         cascade="all, delete-orphan",
     )
+    owner: Mapped["Player | None"] = relationship(foreign_keys=[owner_id])
 
 
 class GameAction(Base):

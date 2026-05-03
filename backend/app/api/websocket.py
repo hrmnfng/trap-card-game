@@ -224,6 +224,53 @@ async def handle_websocket_messages(
                     websocket
                 )
             
+            elif message_type == "start_game":
+                # Handle game start
+                lobby_service = LobbyService(db)
+                
+                # Check if player is the lobby owner
+                if not await lobby_service.is_lobby_owner(lobby.id, player_id):
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "Only the lobby owner can start the game"},
+                        websocket
+                    )
+                    continue
+                
+                # Check if game has already started
+                game_state = await game_service.get_game_state(lobby.id, player_id)
+                if game_state.get("my_cards"):
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "Game already started"},
+                        websocket
+                    )
+                    continue
+                
+                # Get all players
+                players = await lobby_service.get_lobby_players(lobby.id)
+                
+                # Check minimum players
+                if len(players) < 2:
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "At least 2 players required to start"},
+                        websocket
+                    )
+                    continue
+                
+                # Distribute cards to each player
+                for p in players:
+                    await game_service.distribute_cards(lobby.id, p.id)
+                
+                # Broadcast game started event
+                await pubsub_service.broadcast_game_started(
+                    lobby.id,
+                    [p.id for p in players]
+                )
+                
+                # Send updated state to all players
+                for p in players:
+                    p_game_state = await game_service.get_game_state(lobby.id, p.id)
+                    await pubsub_service.broadcast_state_update(lobby.id, p_game_state)
+            
             elif message_type == "play_card":
                 # Handle card play
                 card_id = data.get("card_id")

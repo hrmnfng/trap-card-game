@@ -129,6 +129,19 @@ class LobbyService:
             # Player already joined, idempotent operation
             return True
         
+        # Check if username is already taken in this lobby (case-insensitive)
+        # but only by a DIFFERENT player
+        current_players = await self.get_lobby_players(lobby_id)
+        for player in current_players:
+            if player.id != player_id and player.username.lower() == username.lower():
+                # Username already taken by different player
+                return False
+        
+        # Set lobby owner if this is the first player
+        if not lobby.owner_id:
+            lobby.owner_id = player_id
+            self.db.add(lobby)
+        
         # Create join action
         join_action = GameAction(
             lobby_id=lobby_id,
@@ -319,6 +332,22 @@ class LobbyService:
         """
         lobby = await self.get_lobby_by_code(code)
         return lobby is not None
+
+    async def is_lobby_owner(self, lobby_id: str, player_id: str) -> bool:
+        """Check if a player is the owner of a lobby.
+        
+        Args:
+            lobby_id: Lobby UUID
+            player_id: Player UUID
+            
+        Returns:
+            True if player is the owner, False otherwise
+        """
+        lobby = await self.get_lobby_by_id(lobby_id)
+        if not lobby:
+            return False
+        
+        return lobby.owner_id == player_id
 
     @staticmethod
     def is_valid_code(code: str) -> bool:

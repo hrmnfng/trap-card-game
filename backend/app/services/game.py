@@ -294,8 +294,15 @@ class GameService:
                 'timestamp': action.timestamp
             })
         
+        # Get lobby to include owner_id
+        result = await self.db.execute(
+            select(Lobby).where(Lobby.id == lobby_id)
+        )
+        lobby = result.scalar_one_or_none()
+        
         return {
             'lobby_id': lobby_id,
+            'owner_id': lobby.owner_id if lobby else None,
             'players': player_info,
             'my_cards': my_cards,
             'history': history

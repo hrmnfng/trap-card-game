@@ -583,3 +583,158 @@ class TestLobbyServiceIntegration:
         # Get all active lobbies
         active = await service.get_active_lobbies()
         assert len(active) >= 5
+
+
+class TestLobbyOwnership:
+    """Test lobby ownership functionality."""
+
+    async def test_first_player_becomes_owner(self, db_session: AsyncSession):
+        """Test that the first player to join becomes the lobby owner."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # Add first player
+        player1 = Player(username="Player1")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        success = await service.add_player_to_lobby(lobby.id, player1.id, "Player1")
+        assert success
+        
+        # Check that lobby now has an owner
+        await db_session.refresh(lobby)
+        assert lobby.owner_id == player1.id
+    
+    async def test_second_player_is_not_owner(self, db_session: AsyncSession):
+        """Test that subsequent players don't become owners."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # Add first player
+        player1 = Player(username="Player1")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        await service.add_player_to_lobby(lobby.id, player1.id, "Player1")
+        
+        # Add second player
+        player2 = Player(username="Player2")
+        db_session.add(player2)
+        await db_session.commit()
+        await db_session.refresh(player2)
+        
+        await service.add_player_to_lobby(lobby.id, player2.id, "Player2")
+        
+        # Check that lobby owner is still player1
+        await db_session.refresh(lobby)
+        assert lobby.owner_id == player1.id
+    
+    async def test_check_is_owner(self, db_session: AsyncSession):
+        """Test checking if a player is the lobby owner."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # Add players
+        player1 = Player(username="Player1")
+        player2 = Player(username="Player2")
+        db_session.add_all([player1, player2])
+        await db_session.commit()
+        await db_session.refresh(player1)
+        await db_session.refresh(player2)
+        
+        await service.add_player_to_lobby(lobby.id, player1.id, "Player1")
+        await service.add_player_to_lobby(lobby.id, player2.id, "Player2")
+        
+        # Check ownership
+        assert await service.is_lobby_owner(lobby.id, player1.id) is True
+        assert await service.is_lobby_owner(lobby.id, player2.id) is False
+
+
+class TestUniqueUsernames:
+    """Test unique username enforcement."""
+
+    async def test_duplicate_username_rejected(self, db_session: AsyncSession):
+        """Test that duplicate usernames in the same lobby are rejected."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # Add first player with username "Alice"
+        player1 = Player(username="Alice")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        success = await service.add_player_to_lobby(lobby.id, player1.id, "Alice")
+        assert success
+        
+        # Try to add second player with same username
+        player2 = Player(username="Alice")
+        db_session.add(player2)
+        await db_session.commit()
+        await db_session.refresh(player2)
+        
+        # This should fail
+        success = await service.add_player_to_lobby(lobby.id, player2.id, "Alice")
+        assert success is False
+    
+    async def test_duplicate_username_different_lobbies_allowed(self, db_session: AsyncSession):
+        """Test that the same username can be used in different lobbies."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby1 = await service.create_lobby()
+        lobby2 = await service.create_lobby()
+        
+        # Add player with username "Alice" to lobby1
+        player1 = Player(username="Alice")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        success1 = await service.add_player_to_lobby(lobby1.id, player1.id, "Alice")
+        assert success1
+        
+        # Add different player with same username to lobby2
+        player2 = Player(username="Alice")
+        db_session.add(player2)
+        await db_session.commit()
+        await db_session.refresh(player2)
+        
+        success2 = await service.add_player_to_lobby(lobby2.id, player2.id, "Alice")
+        assert success2
+    
+    async def test_case_insensitive_username_check(self, db_session: AsyncSession):
+        """Test that username uniqueness check is case-insensitive."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # Add first player with username "Alice"
+        player1 = Player(username="Alice")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        success = await service.add_player_to_lobby(lobby.id, player1.id, "Alice")
+        assert success
+        
+        # Try to add second player with "alice" (different case)
+        player2 = Player(username="alice")
+        db_session.add(player2)
+        await db_session.commit()
+        await db_session.refresh(player2)
+        
+        # This should fail due to case-insensitive check
+        success = await service.add_player_to_lobby(lobby.id, player2.id, "alice")
+        assert success is False

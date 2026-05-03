@@ -45,6 +45,7 @@ class LobbyResponse(BaseModel):
     id: str
     code: str
     status: str
+    owner_id: str | None = None
     created_at: datetime
     expires_at: datetime
     player_count: int
@@ -76,6 +77,7 @@ class LobbyState(BaseModel):
     lobby_id: str
     lobby_code: str
     status: Literal["waiting", "active", "ended"]
+    owner_id: str | None = None
     players: list[PlayerView]
     my_cards: list[CardData]  # Player's own cards with values
     game_history: list["GameActionView"]

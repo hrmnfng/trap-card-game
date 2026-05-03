@@ -28,6 +28,7 @@
             :class="{ 'is-me': player.id === lobbyStore.currentPlayerId }"
           >
             <span class="player-name">{{ player.username }}</span>
+            <span v-if="player.id === gameStore.gameState?.owner_id" class="badge badge-owner">Owner</span>
             <span v-if="player.id === lobbyStore.currentPlayerId" class="badge">You</span>
           </div>
 
@@ -91,8 +92,12 @@ const copied = ref(false)
 const starting = ref(false)
 
 // Computed
+const isOwner = computed(() => {
+  return gameStore.gameState?.owner_id === lobbyStore.currentPlayerId
+})
+
 const canStartGame = computed(() => {
-  return lobbyStore.playerCount >= 2 && !gameStore.isGameStarted
+  return isOwner.value && lobbyStore.playerCount >= 2 && !gameStore.isGameStarted
 })
 
 const statusClass = computed(() => {
@@ -127,8 +132,10 @@ async function startGame() {
   
   try {
     // Request game start via WebSocket
-    // This would be implemented in the backend
-    // For now, just navigate to game when it starts
+    gameStore.startGame()
+    
+    // Listen for game_started event and navigate
+    // The game store will handle the state update
   } catch (err) {
     console.error('Failed to start game:', err)
   } finally {
@@ -312,6 +319,11 @@ h3 {
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
+  margin-left: 8px;
+}
+
+.badge-owner {
+  background: #ff9800;
 }
 
 .actions {

@@ -69,6 +69,18 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
+   * Start the game
+   */
+  function startGame(): void {
+    if (!connected.value) {
+      error.value = 'Not connected to game'
+      return
+    }
+
+    wsService.startGame()
+  }
+
+  /**
    * Play a card
    */
   function playCard(cardId: string, targetPlayerId: string): void {
@@ -205,6 +217,7 @@ export const useGameStore = defineStore('game', () => {
     // Actions
     connect,
     disconnect,
+    startGame,
     playCard,
     requestState,
     clearState,
