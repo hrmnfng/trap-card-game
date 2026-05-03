@@ -36,16 +36,38 @@ class CardData(BaseModel):
 class LobbyCreate(BaseModel):
     """Schema for creating a new lobby."""
 
-    player_username: str = Field(..., min_length=1, max_length=50)
+    expires_at: datetime | None = None
 
 
 class LobbyResponse(BaseModel):
-    """Response after creating/joining a lobby."""
+    """Response with lobby information."""
 
-    lobby_code: str
-    lobby_id: str
-    player_id: str
-    jwt_token: str
+    id: str
+    code: str
+    status: str
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+
+
+class LobbyJoinRequest(BaseModel):
+    """Schema for joining a lobby."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+
+
+class LobbyPlayerResponse(BaseModel):
+    """Response with player information in a lobby."""
+
+    id: str
+    username: str
+    joined_at: datetime
+
+
+class MessageResponse(BaseModel):
+    """Generic message response."""
+
+    message: str
 
 
 class LobbyState(BaseModel):

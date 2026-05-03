@@ -6,6 +6,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.lobby import router as lobby_router
+from app.api.websocket import router as websocket_router
 from app.config import get_settings
 from app.database import init_db
 from app.redis import close_redis, init_redis
@@ -39,6 +41,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API routers
+app.include_router(lobby_router, prefix="/api")
+app.include_router(websocket_router)
 
 
 @app.get("/health")

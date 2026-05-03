@@ -92,7 +92,7 @@ class GameAction(Base):
     action_type: Mapped[str] = mapped_column(String(20), nullable=False)
     card_value: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    metadata: Mapped[str | None] = mapped_column(Text, nullable=True)
+    action_metadata: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
