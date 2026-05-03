@@ -61,6 +61,12 @@ export interface LobbyPlayerResponse {
   joined_at: string
 }
 
+export interface LobbyJoinResponse {
+  message: string
+  player_id: string
+  lobby_code: string
+}
+
 export interface MessageResponse {
   message: string
 }

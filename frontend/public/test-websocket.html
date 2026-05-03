@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    
+    <div>
+        <label>Lobby Code: <input id="lobbyCode" value="FWCIC7" /></label><br/>
+        <label>Player ID: <input id="playerId" value="test-player-123" /></label><br/>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="sendStartGame()">Send Start Game</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+    
+    <h2>Logs:</h2>
+    <div id="logs"></div>
+
+    <script>
+        let ws = null;
+        
+        function log(message, type = 'log') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logs').appendChild(div);
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        function testConnection() {
+            const lobbyCode = document.getElementById('lobbyCode').value;
+            const playerId = document.getElementById('playerId').value;
+            const wsUrl = `ws://localhost:8000/ws/lobby/${lobbyCode}?player_id=${playerId}`;
+            
+            log(`Connecting to: ${wsUrl}`);
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('✓ WebSocket connected successfully!', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    log(`← Received: ${event.data}`, 'success');
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`  Parsed: ${JSON.stringify(data, null, 2)}`);
+                    } catch (e) {
+                        log(`  (Not JSON)`);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`✗ WebSocket error: ${error}`, 'error');
+                    console.error('Full error:', error);
+                };
+                
+                ws.onclose = (event) => {
+                    log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
+                };
+                
+            } catch (error) {
+                log(`✗ Exception: ${error.message}`, 'error');
+                console.error('Full exception:', error);
+            }
+        }
+        
+        function sendStartGame() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('✗ WebSocket not connected. Connect first!', 'error');
+                return;
+            }
+            
+            const message = { type: 'start_game' };
+            log(`→ Sending: ${JSON.stringify(message)}`);
+            ws.send(JSON.stringify(message));
+        }
+    </script>
+</body>
+</html>

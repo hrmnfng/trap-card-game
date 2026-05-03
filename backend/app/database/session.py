@@ -11,9 +11,10 @@ from app.config import get_settings
 settings = get_settings()
 
 # Create async engine
+# Note: echo=False to reduce log verbosity. Set to True for SQL debugging.
 engine = create_async_engine(
     str(settings.database_url),
-    echo=settings.debug,
+    echo=False,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,

@@ -56,11 +56,11 @@ export const useLobbyStore = defineStore('lobby', () => {
       currentLobby.value = lobby
 
       // Join the lobby
-      await apiService.joinLobby(code, { username })
+      const joinResponse = await apiService.joinLobby(code, { username })
 
-      // Store player info (we'll get player_id from backend response in a real scenario)
-      // For now, we'll set it when we connect to WebSocket
+      // Store player info from response
       currentPlayerUsername.value = username
+      currentPlayerId.value = joinResponse.player_id
 
       // Get updated player list
       await refreshPlayers()

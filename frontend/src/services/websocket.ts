@@ -43,6 +43,7 @@ class WebSocketService {
       this.isIntentionallyClosed = false
 
       const wsUrl = `${config.api.wsBaseUrl}/ws/lobby/${lobbyCode}?player_id=${playerId}`
+      console.log('Connecting to WebSocket:', wsUrl)
 
       try {
         this.ws = new WebSocket(wsUrl)
@@ -110,10 +111,11 @@ class WebSocketService {
    */
   send(message: any): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected')
+      console.error('WebSocket not connected, readyState:', this.ws?.readyState)
       return
     }
 
+    console.log('Sending WebSocket message:', message)
     this.ws.send(JSON.stringify(message))
   }
 

@@ -7,6 +7,7 @@ import type {
   LobbyCreateRequest,
   LobbyResponse,
   LobbyJoinRequest,
+  LobbyJoinResponse,
   LobbyPlayerResponse,
   MessageResponse,
 } from '@/types'
@@ -66,7 +67,7 @@ class ApiService {
   /**
    * Join a lobby
    */
-  async joinLobby(code: string, data: LobbyJoinRequest): Promise<MessageResponse> {
+  async joinLobby(code: string, data: LobbyJoinRequest): Promise<LobbyJoinResponse> {
     const response = await fetch(`${this.baseUrl}/api/lobbies/${code}/join`, {
       method: 'POST',
       headers: {

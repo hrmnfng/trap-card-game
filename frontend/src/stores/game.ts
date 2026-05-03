@@ -13,6 +13,7 @@ export const useGameStore = defineStore('game', () => {
   const gameState = ref<LobbyState | null>(null)
   const connected = ref(false)
   const error = ref<string | null>(null)
+  const gameStarting = ref(false)
 
   // Computed
   const myCards = computed(() => gameState.value?.my_cards || [])
@@ -203,6 +204,7 @@ export const useGameStore = defineStore('game', () => {
     gameState,
     connected,
     error,
+    gameStarting,
 
     // Computed
     myCards,

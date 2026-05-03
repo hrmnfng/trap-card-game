@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
     debug: bool = False
     api_prefix: str = "/api/v1"
+    
+    # Logging
+    # Note: SQL query logging is disabled by default in database/session.py
+    # Set echo=True in create_async_engine() to enable SQL debugging
 
     # Server
     host: str = "0.0.0.0"

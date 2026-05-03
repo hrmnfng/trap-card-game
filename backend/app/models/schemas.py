@@ -65,6 +65,14 @@ class LobbyPlayerResponse(BaseModel):
     joined_at: datetime
 
 
+class LobbyJoinResponse(BaseModel):
+    """Response after joining a lobby."""
+
+    message: str
+    player_id: str
+    lobby_code: str
+
+
 class MessageResponse(BaseModel):
     """Generic message response."""
 

@@ -74,11 +74,20 @@
         {{ gameStore.connected ? 'Connected' : 'Connecting...' }}
       </div>
     </div>
+
+    <!-- Game Starting Overlay -->
+    <div v-if="gameStore.gameStarting" class="game-starting-overlay">
+      <div class="notification">
+        <h3>🎮 Game Starting...</h3>
+        <p>Preparing your cards</p>
+        <div class="spinner"></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '@/stores/lobby'
 import { useGameStore } from '@/stores/game'
@@ -90,6 +99,20 @@ const gameStore = useGameStore()
 // State
 const copied = ref(false)
 const starting = ref(false)
+
+// Watch for game start and auto-navigate
+watch(() => gameStore.isGameStarted, (newValue, oldValue) => {
+  // If game just started (transition from false to true)
+  if (newValue && !oldValue) {
+    gameStore.gameStarting = true
+    
+    // Auto-navigate after 2 seconds
+    setTimeout(() => {
+      router.push(`/game/${lobbyStore.lobbyCode}`)
+      gameStore.gameStarting = false
+    }, 2000)
+  }
+})
 
 // Computed
 const isOwner = computed(() => {
@@ -128,11 +151,19 @@ async function copyLobbyCode() {
 }
 
 async function startGame() {
+  console.log('=== START GAME CLICKED ===')
+  console.log('Is Owner:', isOwner.value)
+  console.log('Player Count:', lobbyStore.playerCount)
+  console.log('Game Started:', gameStore.isGameStarted)
+  console.log('WebSocket Connected:', gameStore.connected)
+  console.log('Game State:', gameStore.gameState)
+  
   starting.value = true
   
   try {
     // Request game start via WebSocket
     gameStore.startGame()
+    console.log('Start game message sent')
     
     // Listen for game_started event and navigate
     // The game store will handle the state update
@@ -400,5 +431,78 @@ h3 {
   50% {
     opacity: 0.5;
   }
+}
+
+/* Game Starting Overlay */
+.game-starting-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.notification {
+  background: white;
+  padding: 48px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: fadeInScale 0.3s ease-out;
+  min-width: 300px;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.notification h3 {
+  margin: 0 0 12px 0;
+  font-size: 28px;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.notification p {
+  margin: 0 0 24px 0;
+  font-size: 16px;
+  color: #666;
+}
+
+.spinner {
+  margin: 0 auto;
+  width: 48px;
+  height: 48px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #42b983;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>

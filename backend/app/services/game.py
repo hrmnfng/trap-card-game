@@ -300,9 +300,20 @@ class GameService:
         )
         lobby = result.scalar_one_or_none()
         
+        # Determine game status
+        has_started = await self.has_game_started(lobby_id)
+        has_ended = await self.has_game_ended(lobby_id)
+        
+        status = 'waiting'
+        if has_ended:
+            status = 'ended'
+        elif has_started:
+            status = 'active'
+        
         return {
             'lobby_id': lobby_id,
             'owner_id': lobby.owner_id if lobby else None,
+            'status': status,
             'players': player_info,
             'my_cards': my_cards,
             'history': history
@@ -321,7 +332,7 @@ class GameService:
             select(GameAction).where(
                 GameAction.lobby_id == lobby_id,
                 GameAction.action_type == "distribute"
-            )
+            ).limit(1)
         )
         distribute_action = result.scalar_one_or_none()
         return distribute_action is not None
@@ -335,6 +346,10 @@ class GameService:
         Returns:
             True if game has ended, False otherwise
         """
+        # Game can only end if it started
+        if not await self.has_game_started(lobby_id):
+            return False
+        
         from app.services.lobby import LobbyService
         lobby_service = LobbyService(self.db)
         

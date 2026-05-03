@@ -9,6 +9,7 @@ from app.models.schemas import (
     LobbyCreate,
     LobbyResponse,
     LobbyJoinRequest,
+    LobbyJoinResponse,
     LobbyPlayerResponse,
     MessageResponse
 )
@@ -119,12 +120,12 @@ async def list_active_lobbies(
     return responses
 
 
-@router.post("/{code}/join", response_model=MessageResponse)
+@router.post("/{code}/join", response_model=LobbyJoinResponse)
 async def join_lobby(
     code: str,
     join_data: LobbyJoinRequest,
     db: AsyncSession = Depends(get_db)
-) -> MessageResponse:
+) -> LobbyJoinResponse:
     """Join a lobby.
     
     Args:
@@ -185,7 +186,11 @@ async def join_lobby(
             detail="Failed to join lobby"
         )
     
-    return MessageResponse(message=f"Successfully joined lobby {code}")
+    return LobbyJoinResponse(
+        message=f"Successfully joined lobby {code}",
+        player_id=player.id,
+        lobby_code=code
+    )
 
 
 @router.post("/{code}/leave", response_model=MessageResponse)

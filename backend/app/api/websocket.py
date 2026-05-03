@@ -256,20 +256,31 @@ async def handle_websocket_messages(
                     )
                     continue
                 
-                # Distribute cards to each player
-                for p in players:
-                    await game_service.distribute_cards(lobby.id, p.id)
+                # Distribute cards to all players (this distributes to everyone automatically)
+                success = await game_service.distribute_cards(lobby.id)
                 
-                # Broadcast game started event
-                await pubsub_service.broadcast_game_started(
-                    lobby.id,
-                    [p.id for p in players]
+                if not success:
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "Failed to start game"},
+                        websocket
+                    )
+                    continue
+                
+                # Broadcast game started event to all players in the lobby
+                await manager.broadcast(
+                    {"type": "game_started", "lobby_id": lobby.id},
+                    lobby.id
                 )
                 
-                # Send updated state to all players
+                # Send each player their updated state with their cards
                 for p in players:
                     p_game_state = await game_service.get_game_state(lobby.id, p.id)
-                    await pubsub_service.broadcast_state_update(lobby.id, p_game_state)
+                    # Send directly to the player's WebSocket if connected
+                    if p.id in manager.player_connections:
+                        await manager.send_personal_message(
+                            {"type": "state_update", "state": p_game_state},
+                            manager.player_connections[p.id]
+                        )
             
             elif message_type == "play_card":
                 # Handle card play
