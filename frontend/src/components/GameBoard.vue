@@ -117,7 +117,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '@/stores/lobby'
 import { useGameStore } from '@/stores/game'
-import type { Card, Player } from '@/types'
+import type { Card } from '@/types'
 
 const router = useRouter()
 const lobbyStore = useLobbyStore()

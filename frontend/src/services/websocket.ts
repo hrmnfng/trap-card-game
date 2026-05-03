@@ -3,7 +3,6 @@
  */
 
 import { config } from '@/config'
-import type { LobbyState } from '@/types'
 
 export type WSEventType =
   | 'connected'

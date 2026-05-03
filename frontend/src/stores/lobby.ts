@@ -44,6 +44,15 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   /**
+   * Set owner info after creating lobby (owner is first to join)
+   */
+  function setOwnerInfo(playerId: string, username: string): void {
+    currentPlayerId.value = playerId
+    currentPlayerUsername.value = username
+    saveSession()
+  }
+
+  /**
    * Join a lobby
    */
   async function joinLobby(code: string, username: string): Promise<void> {
@@ -64,6 +73,9 @@ export const useLobbyStore = defineStore('lobby', () => {
 
       // Get updated player list
       await refreshPlayers()
+
+      // Save session for persistence across page refreshes
+      saveSession()
     } catch (err: any) {
       error.value = err.message
       currentLobby.value = null
@@ -160,6 +172,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     currentPlayerId.value = null
     currentPlayerUsername.value = null
     error.value = null
+    clearStoredSession()
   }
 
   /**
@@ -183,6 +196,95 @@ export const useLobbyStore = defineStore('lobby', () => {
    */
   function removePlayer(playerId: string): void {
     players.value = players.value.filter((p) => p.id !== playerId)
+  }
+
+  /**
+   * Session storage key
+   */
+  const SESSION_KEY = 'trapcard_session'
+
+  /**
+   * Saved session interface
+   */
+  interface SavedSession {
+    lobbyCode: string
+    playerId: string
+    username: string
+    savedAt: number
+  }
+
+  /**
+   * Save current session to localStorage
+   */
+  function saveSession(): void {
+    if (!currentLobby.value || !currentPlayerId.value || !currentPlayerUsername.value) {
+      return
+    }
+    const session: SavedSession = {
+      lobbyCode: currentLobby.value.code,
+      playerId: currentPlayerId.value,
+      username: currentPlayerUsername.value,
+      savedAt: Date.now()
+    }
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+      console.log('Session saved:', session.lobbyCode)
+    } catch (err) {
+      console.error('Failed to save session:', err)
+    }
+  }
+
+  /**
+   * Load session from localStorage
+   */
+  function loadSession(): SavedSession | null {
+    try {
+      const stored = localStorage.getItem(SESSION_KEY)
+      if (!stored) return null
+      const session: SavedSession = JSON.parse(stored)
+
+      // Check if session is valid (less than 24h old)
+      const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+      if (Date.now() - session.savedAt > maxAge) {
+        clearStoredSession()
+        return null
+      }
+
+      console.log('Session loaded:', session.lobbyCode)
+      return session
+    } catch (err) {
+      console.error('Failed to load session:', err)
+      return null
+    }
+  }
+
+  /**
+   * Clear session from localStorage
+   */
+  function clearStoredSession(): void {
+    try {
+      localStorage.removeItem(SESSION_KEY)
+      console.log('Session cleared')
+    } catch (err) {
+      console.error('Failed to clear session:', err)
+    }
+  }
+
+  /**
+   * Validate session by checking lobby still exists via API
+   */
+  async function validateSession(): Promise<boolean> {
+    const session = loadSession()
+    if (!session) return false
+
+    try {
+      // Try to get lobby info - will throw if lobby doesn't exist
+      await apiService.getLobby(session.lobbyCode)
+      return true
+    } catch {
+      clearStoredSession()
+      return false
+    }
   }
 
   return {
@@ -209,7 +311,14 @@ export const useLobbyStore = defineStore('lobby', () => {
     closeLobby,
     clearLobby,
     setPlayerId,
+    setOwnerInfo,
     addPlayer,
     removePlayer,
+
+    // Session
+    saveSession,
+    loadSession,
+    clearStoredSession,
+    validateSession,
   }
 })

@@ -4,16 +4,29 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { wsService } from '@/services/websocket'
 import { useLobbyStore } from './lobby'
-import type { LobbyState, Card, Player, GameAction } from '@/types'
+import type { LobbyState, Card, Player } from '@/types'
 
 export const useGameStore = defineStore('game', () => {
+  // Router
+  const router = useRouter()
+  
   // State
   const gameState = ref<LobbyState | null>(null)
   const connected = ref(false)
   const error = ref<string | null>(null)
   const gameStarting = ref(false)
+
+  // Session restoration state
+  const isRestoringSession = ref(false)
+  const showReconnectPrompt = ref(false)
+  const pendingSession = ref<{
+    lobbyCode: string
+    playerId: string
+    username: string
+  } | null>(null)
 
   // Computed
   const myCards = computed(() => gameState.value?.my_cards || [])
@@ -225,5 +238,84 @@ export const useGameStore = defineStore('game', () => {
     clearState,
     getPlayer,
     getCard,
+
+    // Session restoration
+    isRestoringSession,
+    showReconnectPrompt,
+    pendingSession,
+    checkForSavedSession,
+    confirmReconnection,
+    cancelReconnection,
+  }
+
+  /**
+   * Check for saved session and show reconnect prompt
+   */
+  async function checkForSavedSession(): Promise<boolean> {
+    const lobbyStore = useLobbyStore()
+    const session = lobbyStore.loadSession()
+
+    if (!session) return false
+
+    // Validate session still exists
+    const valid = await lobbyStore.validateSession()
+    if (!valid) return false
+
+    // Store pending session for user confirmation
+    pendingSession.value = {
+      lobbyCode: session.lobbyCode,
+      playerId: session.playerId,
+      username: session.username
+    }
+
+    // Show reconnect prompt
+    showReconnectPrompt.value = true
+    return true
+  }
+
+  /**
+   * User confirmed reconnection
+   */
+  async function confirmReconnection(): Promise<void> {
+    if (!pendingSession.value) return
+
+    showReconnectPrompt.value = false
+    isRestoringSession.value = true
+
+    const session = pendingSession.value
+    const lobbyStore = useLobbyStore()
+
+    try {
+      // Load lobby info
+      await lobbyStore.refreshLobby()
+      await lobbyStore.refreshPlayers()
+
+      // Set player info
+      lobbyStore.currentPlayerId = session.playerId
+      lobbyStore.currentPlayerUsername = session.username
+
+      // Connect to WebSocket
+      await connect(session.lobbyCode, session.playerId)
+
+      // Route to appropriate page based on game status
+      if (isGameStarted.value) {
+        await router.push(`/game/${session.lobbyCode}`)
+      } else {
+        await router.push(`/lobby/${session.lobbyCode}`)
+      }
+    } catch (err) {
+      console.error('Failed to restore session:', err)
+      isRestoringSession.value = false
+      pendingSession.value = null
+    }
+  }
+
+  /**
+   * User cancelled reconnection
+   */
+  function cancelReconnection(): void {
+    showReconnectPrompt.value = false
+    pendingSession.value = null
+    isRestoringSession.value = false
   }
 })
