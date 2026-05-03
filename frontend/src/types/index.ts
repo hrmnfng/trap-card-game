@@ -37,14 +37,30 @@ export interface LobbyState {
 }
 
 export interface LobbyCreateRequest {
-  player_username: string
+  expires_at?: string
 }
 
 export interface LobbyResponse {
-  lobby_code: string
-  lobby_id: string
-  player_id: string
-  jwt_token: string
+  id: string
+  code: string
+  status: string
+  created_at: string
+  expires_at: string
+  player_count: number
+}
+
+export interface LobbyJoinRequest {
+  username: string
+}
+
+export interface LobbyPlayerResponse {
+  id: string
+  username: string
+  joined_at: string
+}
+
+export interface MessageResponse {
+  message: string
 }
 
 export interface CardPlayRequest {
