@@ -213,6 +213,8 @@ async def handle_websocket_messages(
                     websocket
                 )
                 continue
+            except Exception as e:
+                break
             
             message_type = data.get("type")
             
@@ -226,7 +228,7 @@ async def handle_websocket_messages(
             
             elif message_type == "start_game":
                 # Handle game start
-                print(f"[START GAME] Received start_game message from {player_id}")
+                from app.models.database import LobbyStatus
                 lobby_service = LobbyService(db)
                 
                 # Check if player is the lobby owner
@@ -238,7 +240,6 @@ async def handle_websocket_messages(
                     continue
                 
                 # Check if game has already started (check lobby status, not cards)
-                from app.models.database import LobbyStatus
                 if lobby.status != LobbyStatus.WAITING.value:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Game already started"},
@@ -308,7 +309,6 @@ async def handle_websocket_messages(
                 
                 if success:
                     # Get card value and player/target usernames for broadcast
-                    from app.services.lobby import LobbyService
                     from sqlalchemy import select
                     from app.models.database import Player, GameAction
                     
