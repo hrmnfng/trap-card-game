@@ -26,7 +26,12 @@ class GameService:
         self.db = db_session
 
     async def distribute_cards(self, lobby_id: str) -> bool:
-        """Distribute cards to all players in a lobby.
+        """Distribute cards to all players at game start.
+        
+        Distributes cards only to players who don't already have them.
+        Players who joined an in-progress game will already have cards from
+        provision_new_player_cards(), but players who join the waiting lobby
+        will get cards here when the owner starts the game.
         
         Args:
             lobby_id: Lobby UUID
@@ -34,7 +39,7 @@ class GameService:
         Returns:
             True if cards were distributed, False otherwise
         """
-        # Check if cards already distributed
+        # Check if game has already started
         if await self.has_game_started(lobby_id):
             return False
         
@@ -47,29 +52,45 @@ class GameService:
         if len(players) < self.MIN_PLAYERS:
             return False
         
-        # Distribute cards to each player
+        # Distribute cards to each player who doesn't already have them
         for player in players:
-            for _ in range(self.CARDS_PER_PLAYER):
-                card_value = random.randint(settings.min_card_value, settings.max_card_value)
-                card_id = str(uuid4())
-                
-                # Store as distribute action with card_id in metadata
-                action = GameAction(
+            # Check if player already has cards (late joiner to in-progress game)
+            existing_cards = await self.get_player_cards(lobby_id, player.id)
+            
+            if len(existing_cards) == 0:
+                # Player has no cards yet, distribute starting hand
+                for _ in range(self.CARDS_PER_PLAYER):
+                    card_value = random.randint(settings.min_card_value, settings.max_card_value)
+                    card_id = str(uuid4())
+                    
+                    # Store as distribute action with card_id in metadata
+                    action = GameAction(
+                        lobby_id=lobby_id,
+                        player_id=player.id,
+                        action_type="distribute",
+                        card_value=card_value,
+                        action_metadata=card_id
+                    )
+                    self.db.add(action)
+            
+            # Initialize/update player game state (mark that they haven't played a card yet)
+            # Check if player game state already exists
+            result = await self.db.execute(
+                select(PlayerGameState).where(
+                    PlayerGameState.lobby_id == lobby_id,
+                    PlayerGameState.player_id == player.id
+                )
+            )
+            player_state = result.scalar_one_or_none()
+            
+            if not player_state:
+                # Create new player game state
+                player_game_state = PlayerGameState(
                     lobby_id=lobby_id,
                     player_id=player.id,
-                    action_type="distribute",
-                    card_value=card_value,
-                    action_metadata=card_id
+                    has_played_card=False
                 )
-                self.db.add(action)
-            
-            # Initialize player game state (mark that they haven't played a card yet)
-            player_game_state = PlayerGameState(
-                lobby_id=lobby_id,
-                player_id=player.id,
-                has_played_card=False
-            )
-            self.db.add(player_game_state)
+                self.db.add(player_game_state)
         
         await self.db.commit()
         return True

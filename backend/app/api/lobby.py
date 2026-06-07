@@ -279,8 +279,9 @@ async def join_lobby(
             detail="Failed to join lobby"
         )
     
-    # If this is a NEW player joining, provision their starting cards
-    if is_new_player:
+    # If this is a NEW player joining an IN-PROGRESS game, provision their cards
+    # (For games in "waiting" status, cards are only dealt when game starts)
+    if is_new_player and lobby.status == "in-progress":
         await lobby_service.provision_new_player_cards(lobby.id, user.id)
     
     return LobbyJoinResponse(

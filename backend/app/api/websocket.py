@@ -236,9 +236,9 @@ async def handle_websocket_messages(
                     )
                     continue
                 
-                # Check if game has already started
-                game_state = await game_service.get_game_state(lobby.id, player_id)
-                if game_state.get("my_cards"):
+                # Check if game has already started (check lobby status, not cards)
+                from app.models.database import LobbyStatus
+                if lobby.status != LobbyStatus.WAITING.value:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Game already started"},
                         websocket
