@@ -5,14 +5,15 @@
 import { config } from '@/config'
 import { authService } from '@/services/auth'
 import type {
-  LobbyCreateRequest,
-  LobbyResponse,
-  LobbyJoinRequest,
-  LobbyJoinResponse,
-  LobbyPlayerResponse,
-  LobbyStateResponse,
-  MessageResponse,
-} from '@/types'
+    LobbyCreateRequest,
+    LobbyResponse,
+    LobbyJoinRequest,
+    LobbyJoinResponse,
+    LobbyPlayerResponse,
+    LobbyStateResponse,
+    LobbyHistoryItem,
+    MessageResponse,
+  } from '@/types'
 
 class ApiService {
   private baseUrl: string
@@ -163,6 +164,30 @@ class ApiService {
 
     if (!response.ok) {
       throw new Error(`Failed to close lobby: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get user's lobby history (requires authentication via Bearer token)
+   */
+  async getLobbyHistory(): Promise<LobbyHistoryItem[]> {
+    const token = authService.getToken()
+
+    if (!token) {
+      throw new Error('Not authenticated')
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/lobbies/history`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new Error(error.detail || 'Failed to get lobby history')
     }
 
     return response.json()

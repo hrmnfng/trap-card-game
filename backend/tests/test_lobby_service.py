@@ -39,14 +39,15 @@ class TestLobbyServiceCreate:
         assert lobby.code.isalnum()
         assert lobby.code.isupper()
 
-    async def test_create_lobby_sets_active_status(self, db_session: AsyncSession):
-        """Test that new lobbies have active status."""
+    async def test_create_lobby_sets_waiting_status(self, db_session: AsyncSession):
+        """Test that new lobbies have waiting status."""
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         service = LobbyService(db_session)
         lobby = await service.create_lobby()
         
-        assert lobby.status == "active"
+        assert lobby.status == LobbyStatus.WAITING.value
 
     async def test_create_lobby_sets_expiration(self, db_session: AsyncSession):
         """Test that new lobbies have expiration set to 24 hours."""
@@ -180,7 +181,7 @@ class TestLobbyServicePlayers:
         from app.services.lobby import LobbyService
         
         # Create player and lobby
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -196,7 +197,7 @@ class TestLobbyServicePlayers:
         """Test that adding player creates a join action."""
         from app.services.lobby import LobbyService
         
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -222,7 +223,7 @@ class TestLobbyServicePlayers:
         """Test adding player to non-existent lobby fails."""
         from app.services.lobby import LobbyService
         
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -239,7 +240,7 @@ class TestLobbyServicePlayers:
         """Test that adding same player twice is idempotent."""
         from app.services.lobby import LobbyService
         
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -269,9 +270,9 @@ class TestLobbyServicePlayers:
         from app.services.lobby import LobbyService
         
         # Create players
-        player1 = Player(username="player1")
-        player2 = Player(username="player2")
-        player3 = Player(username="player3")
+        player1 = Player(username="player1", password_hash="dummy_hash")
+        player2 = Player(username="player2", password_hash="dummy_hash")
+        player3 = Player(username="player3", password_hash="dummy_hash")
         db_session.add_all([player1, player2, player3])
         await db_session.commit()
         
@@ -317,7 +318,7 @@ class TestLobbyServicePlayers:
         """Test removing a player from lobby."""
         from app.services.lobby import LobbyService
         
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -338,7 +339,7 @@ class TestLobbyServicePlayers:
         """Test that removing player creates a leave action."""
         from app.services.lobby import LobbyService
         
-        player = Player(username="testplayer")
+        player = Player(username="testplayer", password_hash="dummy_hash")
         db_session.add(player)
         await db_session.commit()
         
@@ -394,7 +395,7 @@ class TestLobbyServicePlayers:
             await service.add_player_to_lobby(lobby.id, player.id, player.username)
         
         # Try to add 11th player
-        extra_player = Player(username="extra")
+        extra_player = Player(username="extra", password_hash="dummy_hash")
         db_session.add(extra_player)
         await db_session.commit()
         
@@ -408,6 +409,7 @@ class TestLobbyServiceStatus:
     async def test_close_lobby(self, db_session: AsyncSession):
         """Test closing a lobby."""
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         service = LobbyService(db_session)
         lobby = await service.create_lobby()
@@ -418,7 +420,7 @@ class TestLobbyServiceStatus:
         
         # Verify status changed
         updated_lobby = await service.get_lobby_by_id(lobby.id)
-        assert updated_lobby.status == "completed"
+        assert updated_lobby.status == LobbyStatus.CONCLUDED.value
 
     async def test_close_nonexistent_lobby(self, db_session: AsyncSession):
         """Test closing non-existent lobby fails."""
@@ -461,6 +463,7 @@ class TestLobbyServiceStatus:
     async def test_cleanup_expired_lobbies(self, db_session: AsyncSession):
         """Test cleaning up expired lobbies."""
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         service = LobbyService(db_session)
         
@@ -478,11 +481,11 @@ class TestLobbyServiceStatus:
         
         # Verify expired lobby is closed
         expired = await service.get_lobby_by_id(expired_lobby.id)
-        assert expired.status == "completed"
+        assert expired.status == LobbyStatus.CONCLUDED.value
         
-        # Verify active lobby is still active
+        # Verify active lobby is still waiting
         active = await service.get_lobby_by_id(active_lobby.id)
-        assert active.status == "active"
+        assert active.status == LobbyStatus.WAITING.value
 
 
 class TestLobbyServiceValidation:
@@ -524,12 +527,13 @@ class TestLobbyServiceIntegration:
     async def test_complete_lobby_lifecycle(self, db_session: AsyncSession):
         """Test complete lobby lifecycle from creation to closure."""
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         service = LobbyService(db_session)
         
         # 1. Create lobby
         lobby = await service.create_lobby()
-        assert lobby.status == "active"
+        assert lobby.status == LobbyStatus.WAITING.value
         
         # 2. Add players
         players = []
@@ -596,7 +600,7 @@ class TestLobbyOwnership:
         lobby = await service.create_lobby()
         
         # Add first player
-        player1 = Player(username="Player1")
+        player1 = Player(username="Player1", password_hash="dummy_hash")
         db_session.add(player1)
         await db_session.commit()
         await db_session.refresh(player1)
@@ -616,7 +620,7 @@ class TestLobbyOwnership:
         lobby = await service.create_lobby()
         
         # Add first player
-        player1 = Player(username="Player1")
+        player1 = Player(username="Player1", password_hash="dummy_hash")
         db_session.add(player1)
         await db_session.commit()
         await db_session.refresh(player1)
@@ -624,7 +628,7 @@ class TestLobbyOwnership:
         await service.add_player_to_lobby(lobby.id, player1.id, "Player1")
         
         # Add second player
-        player2 = Player(username="Player2")
+        player2 = Player(username="Player2", password_hash="dummy_hash")
         db_session.add(player2)
         await db_session.commit()
         await db_session.refresh(player2)
@@ -643,8 +647,8 @@ class TestLobbyOwnership:
         lobby = await service.create_lobby()
         
         # Add players
-        player1 = Player(username="Player1")
-        player2 = Player(username="Player2")
+        player1 = Player(username="Player1", password_hash="dummy_hash")
+        player2 = Player(username="Player2", password_hash="dummy_hash")
         db_session.add_all([player1, player2])
         await db_session.commit()
         await db_session.refresh(player1)
@@ -658,6 +662,177 @@ class TestLobbyOwnership:
         assert await service.is_lobby_owner(lobby.id, player2.id) is False
 
 
+class TestLobbyStatusUpdate:
+    """Test lobby status update functionality."""
+
+    async def test_update_lobby_status_to_in_progress(self, db_session: AsyncSession):
+        """Test updating lobby status to in-progress."""
+        from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        result = await service.update_lobby_status(lobby.id, LobbyStatus.IN_PROGRESS)
+        
+        assert result is True
+        
+        # Verify status changed
+        updated_lobby = await service.get_lobby_by_id(lobby.id)
+        assert updated_lobby.status == LobbyStatus.IN_PROGRESS.value
+
+    async def test_update_lobby_status_to_concluded(self, db_session: AsyncSession):
+        """Test updating lobby status to concluded."""
+        from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        result = await service.update_lobby_status(lobby.id, LobbyStatus.CONCLUDED)
+        
+        assert result is True
+        
+        # Verify status changed
+        updated_lobby = await service.get_lobby_by_id(lobby.id)
+        assert updated_lobby.status == LobbyStatus.CONCLUDED.value
+
+    async def test_update_nonexistent_lobby_status(self, db_session: AsyncSession):
+        """Test updating non-existent lobby status fails."""
+        from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
+        
+        service = LobbyService(db_session)
+        result = await service.update_lobby_status(
+            "00000000-0000-0000-0000-000000000000",
+            LobbyStatus.IN_PROGRESS
+        )
+        
+        assert result is False
+
+
+class TestPlayerLobbyHistory:
+    """Test player lobby history functionality."""
+
+    async def test_get_player_lobby_history_empty(self, db_session: AsyncSession):
+        """Test getting lobby history for player with no lobbies."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        player = Player(username="player1", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        
+        history = await service.get_player_lobby_history(player.id)
+        
+        assert history == []
+
+    async def test_get_player_lobby_history_single_lobby(self, db_session: AsyncSession):
+        """Test getting lobby history for player with one lobby."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        
+        # Create player and lobby
+        player = Player(username="player1", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        lobby = await service.create_lobby()
+        
+        # Add player to lobby
+        await service.add_player_to_lobby(lobby.id, player.id, player.username)
+        
+        # Get history
+        history = await service.get_player_lobby_history(player.id)
+        
+        assert len(history) == 1
+        assert history[0]['code'] == lobby.code
+        assert history[0]['player_count'] == 1
+
+    async def test_get_player_lobby_history_multiple_lobbies(self, db_session: AsyncSession):
+        """Test getting lobby history for player with multiple lobbies."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        
+        # Create player
+        player = Player(username="player1", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # Create and join multiple lobbies
+        lobbies = []
+        for _ in range(3):
+            lobby = await service.create_lobby()
+            lobbies.append(lobby)
+            await service.add_player_to_lobby(lobby.id, player.id, player.username)
+        
+        # Get history
+        history = await service.get_player_lobby_history(player.id)
+        
+        assert len(history) == 3
+        history_codes = [item['code'] for item in history]
+        for lobby in lobbies:
+            assert lobby.code in history_codes
+
+    async def test_get_player_lobby_history_ordered_by_recent(self, db_session: AsyncSession):
+        """Test that lobby history is ordered by most recent first."""
+        from app.services.lobby import LobbyService
+        import time
+        
+        service = LobbyService(db_session)
+        
+        # Create player
+        player = Player(username="player1", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # Create and join lobbies with small delay
+        codes = []
+        for _ in range(3):
+            lobby = await service.create_lobby()
+            codes.append(lobby.code)
+            await service.add_player_to_lobby(lobby.id, player.id, player.username)
+            time.sleep(0.1)  # Small delay to ensure different timestamps
+        
+        # Get history
+        history = await service.get_player_lobby_history(player.id)
+        
+        # Should be in reverse order (most recent first)
+        history_codes = [item['code'] for item in history]
+        assert history_codes[0] == codes[-1]  # Most recent
+
+    async def test_lobby_history_includes_owner_info(self, db_session: AsyncSession):
+        """Test that lobby history includes owner information."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        
+        # Create players
+        owner = Player(username="owner", password_hash="dummy_hash")
+        player = Player(username="player1", password_hash="dummy_hash")
+        db_session.add_all([owner, player])
+        await db_session.commit()
+        await db_session.refresh(owner)
+        await db_session.refresh(player)
+        
+        # Create lobby and add owner first
+        lobby = await service.create_lobby()
+        await service.add_player_to_lobby(lobby.id, owner.id, owner.username)
+        await service.add_player_to_lobby(lobby.id, player.id, player.username)
+        
+        # Get history for player
+        history = await service.get_player_lobby_history(player.id)
+        
+        assert len(history) == 1
+        assert history[0]['owner_username'] == owner.username
+        assert history[0]['player_count'] == 2
+
+
 class TestUniqueUsernames:
     """Test unique username enforcement."""
 
@@ -669,7 +844,7 @@ class TestUniqueUsernames:
         lobby = await service.create_lobby()
         
         # Add first player with username "Alice"
-        player1 = Player(username="Alice")
+        player1 = Player(username="Alice", password_hash="dummy_hash")
         db_session.add(player1)
         await db_session.commit()
         await db_session.refresh(player1)
@@ -678,7 +853,7 @@ class TestUniqueUsernames:
         assert success
         
         # Try to add second player with same username
-        player2 = Player(username="Alice")
+        player2 = Player(username="Alice", password_hash="dummy_hash")
         db_session.add(player2)
         await db_session.commit()
         await db_session.refresh(player2)
@@ -696,7 +871,7 @@ class TestUniqueUsernames:
         lobby2 = await service.create_lobby()
         
         # Add player with username "Alice" to lobby1
-        player1 = Player(username="Alice")
+        player1 = Player(username="Alice", password_hash="dummy_hash")
         db_session.add(player1)
         await db_session.commit()
         await db_session.refresh(player1)
@@ -705,7 +880,7 @@ class TestUniqueUsernames:
         assert success1
         
         # Add different player with same username to lobby2
-        player2 = Player(username="Alice")
+        player2 = Player(username="Alice", password_hash="dummy_hash")
         db_session.add(player2)
         await db_session.commit()
         await db_session.refresh(player2)
@@ -721,7 +896,7 @@ class TestUniqueUsernames:
         lobby = await service.create_lobby()
         
         # Add first player with username "Alice"
-        player1 = Player(username="Alice")
+        player1 = Player(username="Alice", password_hash="dummy_hash")
         db_session.add(player1)
         await db_session.commit()
         await db_session.refresh(player1)
@@ -730,7 +905,7 @@ class TestUniqueUsernames:
         assert success
         
         # Try to add second player with "alice" (different case)
-        player2 = Player(username="alice")
+        player2 = Player(username="alice", password_hash="dummy_hash")
         db_session.add(player2)
         await db_session.commit()
         await db_session.refresh(player2)

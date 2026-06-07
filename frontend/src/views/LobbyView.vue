@@ -11,13 +11,12 @@
       <RouterLink to="/">Back to Home</RouterLink>
     </div>
 
-    <!-- Show waiting lobby view if status is "waiting" -->
+    <!-- Show waiting lobby view only if status is "waiting" -->
     <LobbyWaiting v-else-if="lobbyStatus === 'waiting'" />
 
-    <!-- If status is "in-progress", GameView should handle it -->
-    <!-- (This shouldn't normally happen - router should redirect to game view) -->
+    <!-- If status is "in-progress", redirect to game view -->
     <div v-else-if="lobbyStatus === 'in-progress'" class="redirect-message">
-      <p>Game is in progress. Redirecting...</p>
+      <p>Game in progress. Redirecting to game view...</p>
     </div>
 
     <!-- If status is "concluded" -->
@@ -46,8 +45,8 @@ const lobbyStatus = ref<'waiting' | 'in-progress' | 'concluded' | null>(null)
 
 onMounted(async () => {
   try {
-    // Restore lobby state from API (handles both initial join and page refresh)
-    const status = await lobbyStore.restoreLobbyState(lobbyCode)
+    // Restore lobby state from API
+    const status = await lobbyStore.restoreLobbyState(lobbyCode, false)
     
     if (!status) {
       error.value = 'Could not load lobby. The lobby may have been closed or does not exist.'
@@ -55,21 +54,21 @@ onMounted(async () => {
       return
     }
 
-    // If the lobby is in-progress, redirect to game view
+    // If in-progress, redirect to game view
     if (status === 'in-progress') {
       loading.value = false
       await router.replace({ name: 'game', params: { code: lobbyCode } })
       return
     }
 
-    // If concluded, show message (user can go back home)
+    // If concluded, show message
     if (status === 'concluded') {
       lobbyStatus.value = status
       loading.value = false
       return
     }
 
-    // Otherwise, show waiting view
+    // Otherwise show waiting view
     lobbyStatus.value = status
     loading.value = false
   } catch (err: any) {

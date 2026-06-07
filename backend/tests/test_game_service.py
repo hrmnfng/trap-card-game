@@ -36,7 +36,7 @@ async def test_lobby(db_session: AsyncSession) -> Lobby:
 @pytest.fixture
 async def test_players(db_session: AsyncSession) -> list[Player]:
     """Create test players."""
-    players = [Player(username=f"player{i}") for i in range(5)]
+    players = [Player(username=f"player{i}", password_hash="dummy_hash") for i in range(5)]
     db_session.add_all(players)
     await db_session.commit()
     for player in players:
@@ -761,3 +761,151 @@ class TestGameServiceIntegration:
         card_ids_1 = {c['id'] for c in cards1}
         card_ids_2 = {c['id'] for c in cards2}
         assert card_ids_1.isdisjoint(card_ids_2)
+
+
+class TestGameEndedLogicWithPlayerTracking:
+    """Test game end logic with has_played_card tracking."""
+
+    async def test_game_not_ended_if_no_one_played_cards(
+        self,
+        db_session: AsyncSession,
+        test_lobby: Lobby,
+        test_players: list[Player]
+    ):
+        """Test that game doesn't end if no one has played cards yet."""
+        from app.services.game import GameService
+        from app.services.lobby import LobbyService
+        
+        lobby_service = LobbyService(db_session)
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        
+        game_service = GameService(db_session)
+        await game_service.distribute_cards(test_lobby.id)
+        
+        # No one has played cards yet
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is False
+
+    async def test_game_ends_when_player_who_played_runs_out(
+        self,
+        db_session: AsyncSession,
+        test_lobby: Lobby,
+        test_players: list[Player]
+    ):
+        """Test that game ends when a player who has played cards runs out."""
+        from app.services.game import GameService
+        from app.services.lobby import LobbyService
+        
+        lobby_service = LobbyService(db_session)
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        
+        game_service = GameService(db_session)
+        await game_service.distribute_cards(test_lobby.id)
+        
+        # Player 1 plays all cards
+        cards = await game_service.get_player_cards(test_lobby.id, test_players[0].id)
+        for card in cards:
+            await game_service.play_card(
+                test_lobby.id,
+                test_players[0].id,
+                card['id'],
+                test_players[1].id
+            )
+        
+        # Game should be ended
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is True
+
+    async def test_new_player_joining_doesnt_end_game(
+        self,
+        db_session: AsyncSession,
+        test_lobby: Lobby,
+        test_players: list[Player]
+    ):
+        """Test that new player joining mid-game doesn't incorrectly end the game."""
+        from app.services.game import GameService
+        from app.services.lobby import LobbyService
+        
+        lobby_service = LobbyService(db_session)
+        # Add first two players
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        
+        game_service = GameService(db_session)
+        await game_service.distribute_cards(test_lobby.id)
+        
+        # Game is in progress - no one has played cards yet
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is False
+        
+        # New player joins mid-game (they have 0 cards)
+        await lobby_service.add_player_to_lobby(test_lobby.id, test_players[2].id, test_players[2].username)
+        
+        # Game should still not be ended - new player doesn't count
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is False
+        
+        # Now one of the original players plays all cards
+        cards = await game_service.get_player_cards(test_lobby.id, test_players[0].id)
+        for card in cards:
+            await game_service.play_card(
+                test_lobby.id,
+                test_players[0].id,
+                card['id'],
+                test_players[1].id
+            )
+        
+        # Game should now be ended
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is True
+
+    async def test_only_original_players_count_for_game_end(
+        self,
+        db_session: AsyncSession,
+        test_lobby: Lobby,
+        test_players: list[Player]
+    ):
+        """Test that only original players count toward game end condition."""
+        from app.services.game import GameService
+        from app.services.lobby import LobbyService
+        
+        lobby_service = LobbyService(db_session)
+        # Add only first player initially
+        await lobby_service.add_player_to_lobby(test_lobby.id, test_players[0].id, test_players[0].username)
+        await lobby_service.add_player_to_lobby(test_lobby.id, test_players[1].id, test_players[1].username)
+        
+        game_service = GameService(db_session)
+        await game_service.distribute_cards(test_lobby.id)
+        
+        # Later, other players join mid-game without cards
+        for player in test_players[2:4]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        
+        # Player 1 plays one card (now they've played)
+        cards = await game_service.get_player_cards(test_lobby.id, test_players[0].id)
+        await game_service.play_card(
+            test_lobby.id,
+            test_players[0].id,
+            cards[0]['id'],
+            test_players[1].id
+        )
+        
+        # Game not ended - player 1 still has cards
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is False
+        
+        # Player 1 plays remaining cards
+        remaining_cards = await game_service.get_player_cards(test_lobby.id, test_players[0].id)
+        for card in remaining_cards:
+            await game_service.play_card(
+                test_lobby.id,
+                test_players[0].id,
+                card['id'],
+                test_players[1].id
+            )
+        
+        # Game should be ended now
+        ended = await game_service.has_game_ended(test_lobby.id)
+        assert ended is True

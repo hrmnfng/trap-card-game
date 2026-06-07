@@ -195,6 +195,20 @@ class LobbyStateResponse(BaseModel):
     players: list[LobbyPlayerResponse]
 
 
+class LobbyHistoryItem(BaseModel):
+    """Response with lobby summary for history view."""
+
+    id: str
+    code: str
+    status: Literal["waiting", "in-progress", "concluded"]
+    owner_id: str | None
+    owner_username: str | None
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+    joined_at: datetime  # When the user joined this lobby
+
+
 # FCM schemas
 class FCMTokenRegistration(BaseModel):
     """Schema for registering FCM token."""

@@ -10,7 +10,7 @@
           </span>
         </div>
         <button class="btn-leave" @click="handleLeaveGame">
-          Leave Game
+          Back to Home
         </button>
       </div>
 
@@ -187,14 +187,15 @@ async function playCardOnTarget(targetPlayerId: string) {
 }
 
 async function handleLeaveGame() {
-  if (confirm('Are you sure you want to leave the game?')) {
-    try {
-      gameStore.disconnect()
-      await lobbyStore.leaveLobby()
-      router.push('/')
-    } catch (err) {
-      console.error('Failed to leave game:', err)
-    }
+  try {
+    // Disconnect from WebSocket but don't remove player from lobby
+    // This allows them to rejoin the game later
+    gameStore.disconnect()
+    
+    // Navigate back to home page
+    await router.push('/')
+  } catch (err) {
+    console.error('Failed to navigate away from game:', err)
   }
 }
 
@@ -287,7 +288,7 @@ h2 {
 
 .btn-leave {
   padding: 10px 20px;
-  background: #e74c3c;
+  background: #6c757d;
   color: white;
   border: none;
   border-radius: 8px;
@@ -297,7 +298,7 @@ h2 {
 }
 
 .btn-leave:hover {
-  background: #c0392b;
+  background: #5a6268;
   transform: translateY(-2px);
 }
 

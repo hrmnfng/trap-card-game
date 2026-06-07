@@ -13,6 +13,7 @@ from app.models.schemas import (
     LobbyJoinResponse,
     LobbyPlayerResponse,
     LobbyStateResponse,
+    LobbyHistoryItem,
     MessageResponse
 )
 from app.services.lobby import LobbyService
@@ -53,6 +54,31 @@ async def create_lobby(
         expires_at=lobby.expires_at,
         player_count=0
     )
+
+
+@router.get("/history", response_model=list[LobbyHistoryItem])
+async def get_lobby_history(
+    user: Player = Depends(get_authenticated_user),
+    db: AsyncSession = Depends(get_db)
+) -> list[LobbyHistoryItem]:
+    """Get all lobbies the authenticated user has participated in.
+    
+    Args:
+        user: Authenticated user (injected by dependency)
+        db: Database session
+        
+    Returns:
+        List of lobbies user has joined, ordered by most recent first
+        
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    service = LobbyService(db)
+    
+    # Get player's lobby history
+    history = await service.get_player_lobby_history(user.id)
+    
+    return [LobbyHistoryItem(**item) for item in history]
 
 
 @router.get("/{code}", response_model=LobbyResponse)
@@ -218,11 +244,11 @@ async def join_lobby(
             detail="Lobby not found"
         )
     
-    # Check if lobby is active
+    # Check if lobby is active (not concluded)
     if not await lobby_service.is_lobby_active(lobby.id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Lobby is not active"
+            detail="This game has concluded and cannot accept new players"
         )
     
     # Check if lobby is full
@@ -249,6 +275,33 @@ async def join_lobby(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to join lobby"
         )
+    
+    # If game is in-progress, deal cards to the new player
+    if lobby.status == "in-progress":
+        from app.services.game import GameService
+        game_service = GameService(db)
+        
+        # Deal 3 cards to the new player without affecting others
+        import random
+        from app.config import get_settings
+        from app.models.database import GameAction
+        from uuid import uuid4
+        
+        settings = get_settings()
+        for _ in range(3):
+            card_value = random.randint(settings.min_card_value, settings.max_card_value)
+            card_id = str(uuid4())
+            
+            action = GameAction(
+                lobby_id=lobby.id,
+                player_id=user.id,
+                action_type="distribute",
+                card_value=card_value,
+                action_metadata=card_id
+            )
+            db.add(action)
+        
+        await db.commit()
     
     return LobbyJoinResponse(
         message=f"Successfully joined lobby {code}",

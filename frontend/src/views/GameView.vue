@@ -47,8 +47,9 @@ onMounted(async () => {
   try {
     console.log('[GameView] Mounting, restoring lobby state for code:', lobbyCode)
     
-    // Restore lobby/game state from API (handles page refresh)
-    const status = await lobbyStore.restoreLobbyState(lobbyCode)
+    // Restore lobby/game state from API
+    // skipRedirect=false to use normal auto-redirect logic
+    const status = await lobbyStore.restoreLobbyState(lobbyCode, false)
     
     console.log('[GameView] Restored status:', status, 'Type:', typeof status)
     

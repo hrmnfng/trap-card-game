@@ -23,6 +23,10 @@ export const useLobbyStore = defineStore('lobby', () => {
   const error = ref<string | null>(null)
   const currentPlayerId = ref<string | null>(null)
   const currentPlayerUsername = ref<string | null>(null)
+  
+  // Intent flag to distinguish between page refresh vs intentional navigation
+  // When true, restoration logic will skip auto-redirects (user is intentionally navigating)
+  const skipAutoRedirect = ref(false)
 
   // Computed
   const isInLobby = computed(() => currentLobby.value !== null)
@@ -320,11 +324,17 @@ export const useLobbyStore = defineStore('lobby', () => {
   }
 
   /**
-   * Restore lobby state from code (used on page refresh)
+   * Restore lobby state from code
    * Returns the lobby status to determine which view to show
    * Identifies current player by matching auth store userId with players in lobby
+   * 
+   * @param code - Lobby code to restore
+   * @param skipRedirect - If true, skip auto-redirects (user intentionally navigated here)
    */
-  async function restoreLobbyState(code: string): Promise<'waiting' | 'in-progress' | 'concluded' | null> {
+  async function restoreLobbyState(
+    code: string,
+    skipRedirect: boolean = false
+  ): Promise<'waiting' | 'in-progress' | 'concluded' | null> {
     console.log('[restoreLobbyState] Starting for code:', code, 'userId:', authStore.userId)
     loading.value = true
     error.value = null
@@ -364,7 +374,11 @@ export const useLobbyStore = defineStore('lobby', () => {
       currentPlayerId.value = currentPlayer.id
       currentPlayerUsername.value = currentPlayer.username
       
-      console.log(`[restoreLobbyState] Restored lobby ${code} with status: ${state.status}. Current player: ${currentPlayer.username}`)
+      console.log(`[restoreLobbyState] Restored lobby ${code} with status: ${state.status}. Current player: ${currentPlayer.username}. Skip redirect: ${skipRedirect}`)
+      
+      // Set skip flag based on parameter
+      skipAutoRedirect.value = skipRedirect
+      
       return state.status
     } catch (err: any) {
       error.value = err.message
@@ -385,6 +399,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     currentPlayerId,
     currentPlayerUsername,
     lobbyStatus,
+    skipAutoRedirect,
 
     // Computed
     isInLobby,

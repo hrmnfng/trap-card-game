@@ -384,6 +384,57 @@ class LobbyService:
         # Must be alphanumeric and uppercase
         return code.isalnum() and code.isupper()
 
+    async def get_player_lobby_history(self, player_id: str) -> list[dict]:
+        """Get all lobbies a player has participated in.
+        
+        Args:
+            player_id: Player UUID
+            
+        Returns:
+            List of lobby history items with join times
+        """
+        # Get all join events for this player
+        result = await self.db.execute(
+            select(GameAction).where(
+                GameAction.player_id == player_id,
+                GameAction.action_type == "join"
+            ).order_by(GameAction.timestamp.desc())
+        )
+        join_actions = result.scalars().all()
+        
+        lobby_history = []
+        
+        for action in join_actions:
+            # Get lobby info
+            lobby = await self.get_lobby_by_id(action.lobby_id)
+            if not lobby:
+                continue
+            
+            # Get owner username
+            owner = None
+            if lobby.owner_id:
+                result = await self.db.execute(
+                    select(Player).where(Player.id == lobby.owner_id)
+                )
+                owner = result.scalar_one_or_none()
+            
+            # Get player count
+            player_count = await self.get_lobby_player_count(action.lobby_id)
+            
+            lobby_history.append({
+                'id': lobby.id,
+                'code': lobby.code,
+                'status': lobby.status,
+                'owner_id': lobby.owner_id,
+                'owner_username': owner.username if owner else None,
+                'created_at': lobby.created_at,
+                'expires_at': lobby.expires_at,
+                'player_count': player_count,
+                'joined_at': action.timestamp
+            })
+        
+        return lobby_history
+
     async def _generate_unique_code(self) -> str:
         """Generate a unique 6-character alphanumeric code.
         

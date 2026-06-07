@@ -78,6 +78,18 @@ export interface LobbyStateResponse {
   players: LobbyPlayerResponse[]
 }
 
+export interface LobbyHistoryItem {
+  id: string
+  code: string
+  status: 'waiting' | 'in-progress' | 'concluded'
+  owner_id: string | null
+  owner_username: string | null
+  created_at: string
+  expires_at: string
+  player_count: number
+  joined_at: string
+}
+
 export interface MessageResponse {
   message: string
 }
