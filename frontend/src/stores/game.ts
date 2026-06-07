@@ -83,14 +83,17 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Start the game
-   */
+    * Start the game
+    */
   function startGame(): void {
+    console.log('[GameStore.startGame] Called, connected:', connected.value)
     if (!connected.value) {
       error.value = 'Not connected to game'
+      console.error('[GameStore.startGame] Not connected, aborting')
       return
     }
 
+    console.log('[GameStore.startGame] Sending start_game message')
     wsService.startGame()
   }
 
