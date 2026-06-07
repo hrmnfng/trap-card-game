@@ -1,36 +1,11 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
-import { useGameStore } from '@/stores/game'
-
-const gameStore = useGameStore()
-
-onMounted(async () => {
-  // Check for saved session on app start
-  await gameStore.checkForSavedSession()
-})
 </script>
 
 <template>
-  <!-- Reconnection Prompt Modal -->
-  <div v-if="gameStore.showReconnectPrompt" class="modal-overlay">
-    <div class="modal-content">
-      <h2>Resume Previous Session?</h2>
-      <p>You were previously in lobby <strong>{{ gameStore.pendingSession?.lobbyCode }}</strong> as <strong>{{ gameStore.pendingSession?.username }}</strong></p>
-      <p class="hint">Your game progress will be restored.</p>
-      
-      <div class="modal-actions">
-        <button class="btn btn-secondary" @click="gameStore.cancelReconnection()">
-          Start Fresh
-        </button>
-        <button class="btn btn-primary" @click="gameStore.confirmReconnection()">
-          Resume Game
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Main App Content -->
+  <!-- Note: Views (GameView/LobbyView) handle their own state restoration on mount -->
+  <!-- They call restoreLobbyState() to fetch latest state and identify current player -->
   <RouterView />
 </template>
 

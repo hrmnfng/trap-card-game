@@ -200,8 +200,19 @@ async function handleLeaveGame() {
 
 // Lifecycle
 onMounted(async () => {
+  // Verify we have essential info before connecting
+  if (!lobbyStore.lobbyCode) {
+    error.value = 'Missing lobby code'
+    return
+  }
+  
+  if (!lobbyStore.currentPlayerId) {
+    error.value = 'Player ID not set. Please refresh the page.'
+    return
+  }
+
   // Connect to WebSocket if not already connected
-  if (!gameStore.connected && lobbyStore.lobbyCode && lobbyStore.currentPlayerId) {
+  if (!gameStore.connected) {
     try {
       await gameStore.connect(lobbyStore.lobbyCode, lobbyStore.currentPlayerId)
       gameStore.requestState()

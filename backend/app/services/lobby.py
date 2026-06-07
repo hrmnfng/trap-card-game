@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import Lobby, Player, GameAction
+from app.models.database import Lobby, Player, GameAction, LobbyStatus
 
 
 class LobbyService:
@@ -43,7 +43,7 @@ class LobbyService:
         # Create lobby
         lobby = Lobby(
             code=code,
-            status="active",
+            status=LobbyStatus.WAITING.value,
             expires_at=expires_at
         )
         
@@ -82,13 +82,13 @@ class LobbyService:
         return result.scalar_one_or_none()
 
     async def get_active_lobbies(self) -> list[Lobby]:
-        """Get all active lobbies.
+        """Get all active lobbies (in waiting or in-progress state).
         
         Returns:
             List of active lobbies
         """
         result = await self.db.execute(
-            select(Lobby).where(Lobby.status == "active")
+            select(Lobby).where(Lobby.status.in_([LobbyStatus.WAITING.value, LobbyStatus.IN_PROGRESS.value]))
         )
         return list(result.scalars().all())
 
@@ -258,13 +258,32 @@ class LobbyService:
         if not lobby:
             return False
         
-        lobby.status = "completed"
+        lobby.status = LobbyStatus.CONCLUDED.value
+        await self.db.commit()
+        
+        return True
+
+    async def update_lobby_status(self, lobby_id: str, status: LobbyStatus) -> bool:
+        """Update lobby status.
+        
+        Args:
+            lobby_id: Lobby UUID
+            status: New lobby status
+            
+        Returns:
+            True if updated, False if not found
+        """
+        lobby = await self.get_lobby_by_id(lobby_id)
+        if not lobby:
+            return False
+        
+        lobby.status = status.value
         await self.db.commit()
         
         return True
 
     async def is_lobby_active(self, lobby_id: str) -> bool:
-        """Check if lobby is active.
+        """Check if lobby is active (waiting or in-progress).
         
         Args:
             lobby_id: Lobby UUID
@@ -276,7 +295,7 @@ class LobbyService:
         if not lobby:
             return False
         
-        return lobby.status == "active"
+        return lobby.status in [LobbyStatus.WAITING.value, LobbyStatus.IN_PROGRESS.value]
 
     async def is_lobby_expired(self, lobby_id: str) -> bool:
         """Check if lobby has expired.
@@ -304,7 +323,7 @@ class LobbyService:
         # Find expired active lobbies
         result = await self.db.execute(
             select(Lobby).where(
-                Lobby.status == "active",
+                Lobby.status.in_([LobbyStatus.WAITING.value, LobbyStatus.IN_PROGRESS.value]),
                 Lobby.expires_at < now
             )
         )
@@ -313,7 +332,7 @@ class LobbyService:
         # Close them
         count = 0
         for lobby in expired_lobbies:
-            lobby.status = "completed"
+            lobby.status = LobbyStatus.CONCLUDED.value
             count += 1
         
         if count > 0:

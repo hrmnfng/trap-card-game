@@ -5,7 +5,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import Lobby, Player, GameAction
+from app.models.database import Lobby, Player, GameAction, PlayerGameState
 from app.config import get_settings
 
 settings = get_settings()
@@ -62,6 +62,14 @@ class GameService:
                     action_metadata=card_id
                 )
                 self.db.add(action)
+            
+            # Initialize player game state (mark that they haven't played a card yet)
+            player_game_state = PlayerGameState(
+                lobby_id=lobby_id,
+                player_id=player.id,
+                has_played_card=False
+            )
+            self.db.add(player_game_state)
         
         await self.db.commit()
         return True
@@ -176,6 +184,19 @@ class GameService:
         )
         
         self.db.add(play_action)
+        
+        # Mark player as having played a card
+        result = await self.db.execute(
+            select(PlayerGameState).where(
+                PlayerGameState.lobby_id == lobby_id,
+                PlayerGameState.player_id == player_id
+            )
+        )
+        player_state = result.scalar_one_or_none()
+        
+        if player_state:
+            player_state.has_played_card = True
+        
         await self.db.commit()
         
         return True
@@ -338,7 +359,10 @@ class GameService:
         return distribute_action is not None
 
     async def has_game_ended(self, lobby_id: str) -> bool:
-        """Check if game has ended (at least one player out of cards).
+        """Check if game has ended (player who has played a card is out of cards).
+        
+        Only players who have played at least one card count toward game end.
+        This means new players joining mid-game don't affect the end condition.
         
         Args:
             lobby_id: Lobby UUID
@@ -350,14 +374,22 @@ class GameService:
         if not await self.has_game_started(lobby_id):
             return False
         
-        from app.services.lobby import LobbyService
-        lobby_service = LobbyService(self.db)
+        # Get all players who have played at least one card
+        result = await self.db.execute(
+            select(PlayerGameState).where(
+                PlayerGameState.lobby_id == lobby_id,
+                PlayerGameState.has_played_card == True
+            )
+        )
+        active_players = result.scalars().all()
         
-        players = await lobby_service.get_lobby_players(lobby_id)
+        # If no one has played a card yet, game hasn't ended
+        if not active_players:
+            return False
         
-        # Check if any player has no cards remaining
-        for player in players:
-            remaining = await self.get_remaining_cards_count(lobby_id, player.id)
+        # Check if any active player has no cards remaining
+        for player_state in active_players:
+            remaining = await self.get_remaining_cards_count(lobby_id, player_state.player_id)
             if remaining == 0:
                 return True
         

@@ -6,7 +6,10 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { apiService } from '@/services/api'
-import type { LobbyResponse, LobbyPlayerResponse } from '@/types'
+import type { LobbyResponse, LobbyPlayerResponse, LobbyStateResponse } from '@/types'
+
+const LOBBY_CODE_STORAGE_KEY = 'trap_card_current_lobby_code'
+const LOBBY_STATUS_STORAGE_KEY = 'trap_card_lobby_status'
 
 export const useLobbyStore = defineStore('lobby', () => {
   // Get auth store once at top level
@@ -14,6 +17,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   // State
   const currentLobby = ref<LobbyResponse | null>(null)
+  const lobbyStatus = ref<'waiting' | 'in-progress' | 'concluded' | null>(null)
   const players = ref<LobbyPlayerResponse[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -315,6 +319,63 @@ export const useLobbyStore = defineStore('lobby', () => {
     }
   }
 
+  /**
+   * Restore lobby state from code (used on page refresh)
+   * Returns the lobby status to determine which view to show
+   * Identifies current player by matching auth store userId with players in lobby
+   */
+  async function restoreLobbyState(code: string): Promise<'waiting' | 'in-progress' | 'concluded' | null> {
+    console.log('[restoreLobbyState] Starting for code:', code, 'userId:', authStore.userId)
+    loading.value = true
+    error.value = null
+
+    try {
+      // Check if user is authenticated
+      if (!authStore.userId) {
+        throw new Error('User is not authenticated. Please log in first.')
+      }
+
+      console.log('[restoreLobbyState] Fetching lobby state from API')
+      const state: LobbyStateResponse = await apiService.getLobbyState(code)
+      
+      console.log('[restoreLobbyState] API response status:', state.status, 'players:', state.players.length)
+      
+      // Update store with fetched state
+      currentLobby.value = {
+        id: state.id,
+        code: state.code,
+        status: state.status,
+        owner_id: state.owner_id,
+        created_at: state.created_at,
+        expires_at: state.expires_at,
+        player_count: state.player_count,
+      }
+      
+      players.value = state.players
+      lobbyStatus.value = state.status
+      
+      // Find current player by matching userId with players in lobby
+      const currentPlayer = state.players.find(p => p.id === authStore.userId)
+      if (!currentPlayer) {
+        throw new Error(`User is not in this lobby. Current lobby contains ${state.players.length} player(s).`)
+      }
+
+      // Set current player info
+      currentPlayerId.value = currentPlayer.id
+      currentPlayerUsername.value = currentPlayer.username
+      
+      console.log(`[restoreLobbyState] Restored lobby ${code} with status: ${state.status}. Current player: ${currentPlayer.username}`)
+      return state.status
+    } catch (err: any) {
+      error.value = err.message
+      console.error('[restoreLobbyState] Error:', err)
+      clearLobby()
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     currentLobby,
@@ -323,6 +384,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     error,
     currentPlayerId,
     currentPlayerUsername,
+    lobbyStatus,
 
     // Computed
     isInLobby,
@@ -344,6 +406,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     setOwnerInfo,
     addPlayer,
     removePlayer,
+    restoreLobbyState,
 
     // Session
     saveSession,

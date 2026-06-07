@@ -10,6 +10,7 @@ import type {
   LobbyJoinRequest,
   LobbyJoinResponse,
   LobbyPlayerResponse,
+  LobbyStateResponse,
   MessageResponse,
 } from '@/types'
 
@@ -77,6 +78,20 @@ class ApiService {
 
     if (!response.ok) {
       throw new Error(`Failed to list lobbies: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get complete lobby state (for page refresh/reconnection)
+   */
+  async getLobbyState(code: string): Promise<LobbyStateResponse> {
+    const response = await fetch(`${this.baseUrl}/api/lobbies/${code}/state`)
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new Error(error.detail || 'Failed to get lobby state')
     }
 
     return response.json()

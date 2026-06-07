@@ -12,6 +12,7 @@ from app.models.schemas import (
     LobbyJoinRequest,
     LobbyJoinResponse,
     LobbyPlayerResponse,
+    LobbyStateResponse,
     MessageResponse
 )
 from app.services.lobby import LobbyService
@@ -129,6 +130,63 @@ async def list_active_lobbies(
         )
     
     return responses
+
+
+@router.get("/{code}/state", response_model=LobbyStateResponse)
+async def get_lobby_state(
+    code: str,
+    db: AsyncSession = Depends(get_db)
+) -> LobbyStateResponse:
+    """Get complete lobby state including status and players.
+    
+    This endpoint is used for page refresh/reconnection to restore user to correct view.
+    
+    Args:
+        code: 6-character lobby code
+        
+    Returns:
+        Complete lobby state with status and player list
+        
+    Raises:
+        HTTPException: 404 if lobby not found
+    """
+    # Validate code format
+    if not LobbyService.is_valid_code(code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid lobby code format"
+        )
+    
+    service = LobbyService(db)
+    lobby = await service.get_lobby_by_code(code)
+    
+    if not lobby:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lobby not found"
+        )
+    
+    # Get player list and count
+    players = await service.get_lobby_players(lobby.id)
+    player_count = len(players)
+    
+    return LobbyStateResponse(
+        id=lobby.id,
+        code=lobby.code,
+        status=lobby.status,
+        owner_id=lobby.owner_id,
+        created_at=lobby.created_at,
+        expires_at=lobby.expires_at,
+        player_count=player_count,
+        players=[
+            LobbyPlayerResponse(
+                id=player.id,
+                username=player.username,
+                joined_at=player.created_at
+            )
+            for player in players
+        ]
+    )
 
 
 @router.post("/{code}/join", response_model=LobbyJoinResponse)

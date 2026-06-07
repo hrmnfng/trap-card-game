@@ -181,6 +181,20 @@ class WSErrorMessage(BaseModel):
     code: str | None = None
 
 
+# Lobby state schemas
+class LobbyStateResponse(BaseModel):
+    """Response with complete lobby state for reconnection/refresh."""
+
+    id: str
+    code: str
+    status: Literal["waiting", "in-progress", "concluded"]
+    owner_id: str | None
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+    players: list[LobbyPlayerResponse]
+
+
 # FCM schemas
 class FCMTokenRegistration(BaseModel):
     """Schema for registering FCM token."""

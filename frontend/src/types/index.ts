@@ -67,6 +67,17 @@ export interface LobbyJoinResponse {
   lobby_code: string
 }
 
+export interface LobbyStateResponse {
+  id: string
+  code: string
+  status: 'waiting' | 'in-progress' | 'concluded'
+  owner_id: string | null
+  created_at: string
+  expires_at: string
+  player_count: number
+  players: LobbyPlayerResponse[]
+}
+
 export interface MessageResponse {
   message: string
 }
