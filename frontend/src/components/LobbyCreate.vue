@@ -1,7 +1,13 @@
 <template>
   <div class="lobby-create">
     <div class="card">
-      <h2>Trap Card Game</h2>
+      <div class="header">
+        <h2>Trap Card Game</h2>
+        <div class="user-info">
+          <p class="username">{{ authStore.username }}</p>
+          <button class="logout-btn" @click="handleLogout">Logout</button>
+        </div>
+      </div>
       
       <div class="tabs">
         <button
@@ -21,25 +27,13 @@
       <!-- Create Lobby -->
       <div v-if="mode === 'create'" class="mode-content">
         <p class="description">Create a new game lobby and invite friends</p>
-        
-        <div class="form-group">
-          <label for="username-create">Your Username</label>
-          <input
-            id="username-create"
-            v-model="usernameCreate"
-            type="text"
-            placeholder="Enter your username"
-            maxlength="50"
-            @keyup.enter="handleCreateLobby"
-          />
-        </div>
 
         <button
           class="btn btn-primary"
-          :disabled="!usernameCreate || loading"
+          :disabled="lobbyStore.loading"
           @click="handleCreateLobby"
         >
-          {{ loading ? 'Creating...' : 'Create Lobby' }}
+          {{ lobbyStore.loading ? 'Creating...' : 'Create Lobby' }}
         </button>
       </div>
 
@@ -61,30 +55,18 @@
           />
         </div>
 
-        <div class="form-group">
-          <label for="username-join">Your Username</label>
-          <input
-            id="username-join"
-            v-model="usernameJoin"
-            type="text"
-            placeholder="Enter your username"
-            maxlength="50"
-            @keyup.enter="handleJoinLobby"
-          />
-        </div>
-
         <button
           class="btn btn-primary"
-          :disabled="!lobbyCodeInput || !usernameJoin || loading"
+          :disabled="!lobbyCodeInput || lobbyStore.loading"
           @click="handleJoinLobby"
         >
-          {{ loading ? 'Joining...' : 'Join Lobby' }}
+          {{ lobbyStore.loading ? 'Joining...' : 'Join Lobby' }}
         </button>
       </div>
 
       <!-- Error Message -->
-      <div v-if="error" class="error-message">
-        {{ error }}
+      <div v-if="lobbyStore.error" class="error-message">
+        {{ lobbyStore.error }}
       </div>
     </div>
   </div>
@@ -93,56 +75,61 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useLobbyStore } from '@/stores/lobby'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const lobbyStore = useLobbyStore()
 
 // State
 const mode = ref<'create' | 'join'>('create')
-const usernameCreate = ref('')
-const usernameJoin = ref('')
 const lobbyCodeInput = ref('')
-const loading = ref(false)
-const error = ref<string | null>(null)
 
 // Handlers
+
+/**
+ * Create a new lobby and join it automatically
+ * Uses the authenticated user from authStore
+ */
 async function handleCreateLobby() {
-  if (!usernameCreate.value) return
-
-  loading.value = true
-  error.value = null
-
   try {
-    // Create lobby
+    // Create empty lobby
     const code = await lobbyStore.createLobby()
     
-    // Join the lobby
-    await lobbyStore.joinLobby(code, usernameCreate.value)
+    // Join the lobby with authenticated user
+    // (authenticatedUser computed property validates user is logged in)
+    await lobbyStore.joinLobby(code)
     
-    // Navigate to lobby
+    // Navigate to lobby waiting room
     router.push(`/lobby/${code}`)
   } catch (err: any) {
-    error.value = err.message
-  } finally {
-    loading.value = false
+    console.error('Failed to create lobby:', err)
   }
 }
 
+/**
+ * Join an existing lobby
+ * Uses the authenticated user from authStore
+ */
 async function handleJoinLobby() {
-  if (!lobbyCodeInput.value || !usernameJoin.value) return
-
-  loading.value = true
-  error.value = null
+  if (!lobbyCodeInput.value) return
 
   try {
-    await lobbyStore.joinLobby(lobbyCodeInput.value, usernameJoin.value)
+    // Join lobby with authenticated user
+    // (authenticatedUser computed property validates user is logged in)
+    await lobbyStore.joinLobby(lobbyCodeInput.value)
+    
+    // Navigate to lobby waiting room
     router.push(`/lobby/${lobbyCodeInput.value}`)
   } catch (err: any) {
-    error.value = err.message
-  } finally {
-    loading.value = false
+    console.error('Failed to join lobby:', err)
   }
+}
+
+async function handleLogout() {
+  authStore.logout()
+  router.push('/login')
 }
 </script>
 
@@ -165,9 +152,44 @@ async function handleJoinLobby() {
 }
 
 h2 {
-  margin: 0 0 24px 0;
+  margin: 0 0 16px 0;
   text-align: center;
   color: #2c3e50;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.username {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.logout-btn {
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: #e0e0e0;
+  color: #333;
 }
 
 .tabs {

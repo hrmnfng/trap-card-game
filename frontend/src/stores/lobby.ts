@@ -4,10 +4,14 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useAuthStore } from './auth'
 import { apiService } from '@/services/api'
 import type { LobbyResponse, LobbyPlayerResponse } from '@/types'
 
 export const useLobbyStore = defineStore('lobby', () => {
+  // Get auth store once at top level
+  const authStore = useAuthStore()
+
   // State
   const currentLobby = ref<LobbyResponse | null>(null)
   const players = ref<LobbyPlayerResponse[]>([])
@@ -21,6 +25,17 @@ export const useLobbyStore = defineStore('lobby', () => {
   const lobbyCode = computed(() => currentLobby.value?.code || null)
   const playerCount = computed(() => players.value.length)
   const isLobbyFull = computed(() => playerCount.value >= 10)
+
+  /**
+   * Get authenticated username - validates user is logged in
+   * Throws error if not authenticated
+   */
+  const authenticatedUser = computed(() => {
+    if (!authStore.isAuthenticated || !authStore.username) {
+      throw new Error('User not authenticated')
+    }
+    return authStore.username
+  })
 
   // Actions
 
@@ -55,17 +70,23 @@ export const useLobbyStore = defineStore('lobby', () => {
   /**
    * Join a lobby
    */
-  async function joinLobby(code: string, username: string): Promise<void> {
+  async function joinLobby(code: string): Promise<void> {
     loading.value = true
     error.value = null
 
     try {
+      // Verify authenticated user exists (will throw if not authenticated)
+      const username = authenticatedUser.value
+      if (!username) {
+        throw new Error('Not authenticated')
+      }
+
       // Get lobby info
       const lobby = await apiService.getLobby(code)
       currentLobby.value = lobby
 
-      // Join the lobby
-      const joinResponse = await apiService.joinLobby(code, { username })
+      // Join the lobby - authentication is done via Bearer token
+      const joinResponse = await apiService.joinLobby(code)
 
       // Store player info from response
       currentPlayerUsername.value = username
@@ -173,6 +194,13 @@ export const useLobbyStore = defineStore('lobby', () => {
     currentPlayerUsername.value = null
     error.value = null
     clearStoredSession()
+  }
+
+  /**
+   * Clear lobby on logout
+   */
+  function clearOnLogout(): void {
+    clearLobby()
   }
 
   /**
@@ -301,6 +329,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     lobbyCode,
     playerCount,
     isLobbyFull,
+    authenticatedUser,
 
     // Actions
     createLobby,
@@ -310,6 +339,7 @@ export const useLobbyStore = defineStore('lobby', () => {
     refreshPlayers,
     closeLobby,
     clearLobby,
+    clearOnLogout,
     setPlayerId,
     setOwnerInfo,
     addPlayer,

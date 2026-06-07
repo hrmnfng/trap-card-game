@@ -3,7 +3,38 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+# Auth schemas
+class UserRegisterRequest(BaseModel):
+    """Schema for user registration."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=4, max_length=6)
+
+    @field_validator('password')
+    @classmethod
+    def password_must_be_digits(cls, v: str) -> str:
+        """Validate that password contains only digits."""
+        if not v.isdigit():
+            raise ValueError('Password must contain only digits')
+        return v
+
+
+class UserLoginRequest(BaseModel):
+    """Schema for user login."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=4, max_length=6)
+
+
+class UserResponse(BaseModel):
+    """Response with user information and auth token."""
+
+    user_id: str
+    username: str
+    token: str
 
 
 # Player schemas

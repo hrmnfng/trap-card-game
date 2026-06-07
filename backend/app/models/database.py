@@ -25,6 +25,7 @@ class Player(Base):
         default=lambda: str(uuid4()),
     )
     username: Mapped[str] = mapped_column(String(50), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,

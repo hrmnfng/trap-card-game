@@ -20,12 +20,34 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "Trap Card Game"
     environment: Literal["development", "staging", "production"] = "development"
-    debug: bool = False
+    debug: bool = False  # Set via DEBUG env var or .env file
     api_prefix: str = "/api/v1"
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug(cls, v: bool | str) -> bool:
+        """Parse debug value from environment variable.
+        
+        Handles string values like 'true', 'True', 'TRUE', '1' from env vars.
+        """
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "on")
+        return bool(v)
     
     # Logging
-    # Note: SQL query logging is disabled by default in database/session.py
-    # Set echo=True in create_async_engine() to enable SQL debugging
+    log_level: str = "INFO"  # Can override with LOG_LEVEL env var (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def parse_log_level(cls, v: str) -> str:
+        """Validate and uppercase log level."""
+        if isinstance(v, str):
+            v = v.upper()
+            if v in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+                return v
+        return "INFO"
 
     # Server
     host: str = "0.0.0.0"

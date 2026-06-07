@@ -3,6 +3,7 @@
  */
 
 import { config } from '@/config'
+import { authService } from '@/services/auth'
 import type {
   LobbyCreateRequest,
   LobbyResponse,
@@ -20,22 +21,39 @@ class ApiService {
   }
 
   /**
-   * Create a new lobby
+   * Create a new lobby (requires authentication via Bearer token)
    */
   async createLobby(data?: LobbyCreateRequest): Promise<LobbyResponse> {
+    const token = authService.getToken()
+    console.log('[API] createLobby - Token exists:', !!token, token ? `(${token.substring(0, 10)}...)` : 'null')
+    
+    if (!token) {
+      console.error('[API] createLobby - No token found in localStorage')
+      throw new Error('No authentication token found')
+    }
+
+    console.log('[API] createLobby - Making request to:', `${this.baseUrl}/api/lobbies`)
+    
     const response = await fetch(`${this.baseUrl}/api/lobbies`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(data || {}),
     })
 
+    console.log('[API] createLobby - Response status:', response.status, response.statusText)
+
     if (!response.ok) {
-      throw new Error(`Failed to create lobby: ${response.statusText}`)
+      const errorBody = await response.text()
+      console.error('[API] createLobby - Error response:', errorBody)
+      throw new Error(`Failed to create lobby: ${response.statusText} - ${errorBody}`)
     }
 
-    return response.json()
+    const result = await response.json()
+    console.log('[API] createLobby - Success:', result)
+    return result
   }
 
   /**
@@ -65,15 +83,19 @@ class ApiService {
   }
 
   /**
-   * Join a lobby
+   * Join a lobby (requires authentication via Bearer token)
    */
-  async joinLobby(code: string, data: LobbyJoinRequest): Promise<LobbyJoinResponse> {
+  async joinLobby(code: string): Promise<LobbyJoinResponse> {
+    const token = authService.getToken()
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
     const response = await fetch(`${this.baseUrl}/api/lobbies/${code}/join`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
     })
 
     if (!response.ok) {

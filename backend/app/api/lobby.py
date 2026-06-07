@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_authenticated_user
 from app.database.session import get_db
 from app.models.database import Player
 from app.models.schemas import (
@@ -21,15 +22,25 @@ router = APIRouter(prefix="/lobbies", tags=["lobbies"])
 @router.post("", response_model=LobbyResponse, status_code=status.HTTP_201_CREATED)
 async def create_lobby(
     lobby_data: LobbyCreate = LobbyCreate(),
+    user: Player = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db)
 ) -> LobbyResponse:
-    """Create a new lobby.
+    """Create a new lobby (requires authentication).
     
+    Args:
+        lobby_data: Optional lobby configuration
+        user: Authenticated user (injected by dependency)
+        db: Database session
+        
     Returns:
         Created lobby information including unique code
+        
+    Raises:
+        HTTPException: 401 if not authenticated
     """
     service = LobbyService(db)
     
+    # Create lobby
     lobby = await service.create_lobby(expires_at=lobby_data.expires_at)
     
     return LobbyResponse(
@@ -123,25 +134,26 @@ async def list_active_lobbies(
 @router.post("/{code}/join", response_model=LobbyJoinResponse)
 async def join_lobby(
     code: str,
-    join_data: LobbyJoinRequest,
+    user: Player = Depends(get_authenticated_user),
     db: AsyncSession = Depends(get_db)
 ) -> LobbyJoinResponse:
-    """Join a lobby.
+    """Join a lobby with authentication.
     
     Args:
         code: 6-character lobby code
-        join_data: Player information
+        user: Authenticated user (injected by dependency)
+        db: Database session
         
     Returns:
-        Success message
+        Success message with player ID
         
     Raises:
-        HTTPException: 404 if lobby not found, 400 if lobby is full
+        HTTPException: 401 if not authenticated, 404 if lobby not found, 409 if username taken
     """
-    service = LobbyService(db)
+    lobby_service = LobbyService(db)
     
     # Get lobby
-    lobby = await service.get_lobby_by_code(code)
+    lobby = await lobby_service.get_lobby_by_code(code)
     if not lobby:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -149,36 +161,30 @@ async def join_lobby(
         )
     
     # Check if lobby is active
-    if not await service.is_lobby_active(lobby.id):
+    if not await lobby_service.is_lobby_active(lobby.id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Lobby is not active"
         )
     
     # Check if lobby is full
-    if await service.is_lobby_full(lobby.id):
+    if await lobby_service.is_lobby_full(lobby.id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Lobby is full"
         )
     
-    # Check if username is already taken
-    current_players = await service.get_lobby_players(lobby.id)
+    # Check if username is already taken in this lobby
+    current_players = await lobby_service.get_lobby_players(lobby.id)
     for player in current_players:
-        if player.username.lower() == join_data.username.lower():
+        if player.username.lower() == user.username.lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Username '{join_data.username}' is already taken in this lobby"
+                detail=f"Username '{user.username}' is already in this lobby"
             )
     
-    # Create or get player
-    player = Player(username=join_data.username)
-    db.add(player)
-    await db.commit()
-    await db.refresh(player)
-    
-    # Add player to lobby
-    success = await service.add_player_to_lobby(lobby.id, player.id, join_data.username)
+    # Add existing player to lobby (no need to create new player)
+    success = await lobby_service.add_player_to_lobby(lobby.id, user.id, user.username)
     
     if not success:
         raise HTTPException(
@@ -188,7 +194,7 @@ async def join_lobby(
     
     return LobbyJoinResponse(
         message=f"Successfully joined lobby {code}",
-        player_id=player.id,
+        player_id=user.id,
         lobby_code=code
     )
 
