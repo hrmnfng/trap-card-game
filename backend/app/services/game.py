@@ -341,7 +341,11 @@ class GameService:
         }
 
     async def has_game_started(self, lobby_id: str) -> bool:
-        """Check if game has started (cards distributed).
+        """Check if game has started (lobby status is in-progress or concluded).
+        
+        Uses the lobby status (not distribute actions) to determine if game started.
+        This avoids confusion since distribute actions are now created when players
+        join as new players, not when the game owner clicks "start game".
         
         Args:
             lobby_id: Lobby UUID
@@ -349,14 +353,15 @@ class GameService:
         Returns:
             True if game has started, False otherwise
         """
-        result = await self.db.execute(
-            select(GameAction).where(
-                GameAction.lobby_id == lobby_id,
-                GameAction.action_type == "distribute"
-            ).limit(1)
-        )
-        distribute_action = result.scalar_one_or_none()
-        return distribute_action is not None
+        from app.services.lobby import LobbyService
+        lobby_service = LobbyService(self.db)
+        
+        lobby = await lobby_service.get_lobby_by_id(lobby_id)
+        if not lobby:
+            return False
+        
+        # Game has started if status is in-progress or concluded
+        return lobby.status in ['in-progress', 'concluded']
 
     async def has_game_ended(self, lobby_id: str) -> bool:
         """Check if game has ended (player who has played a card is out of cards).
