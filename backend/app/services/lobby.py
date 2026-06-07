@@ -92,13 +92,37 @@ class LobbyService:
         )
         return list(result.scalars().all())
 
+    async def _is_player_new_to_lobby(self, lobby_id: str, player_id: str) -> bool:
+        """Check if a player is NEW to this lobby (never joined before).
+        
+        Private helper to determine if player needs card provisioning.
+        
+        Args:
+            lobby_id: Lobby UUID
+            player_id: Player UUID
+            
+        Returns:
+            True if player is new (no join action exists), False if rejoining
+        """
+        result = await self.db.execute(
+            select(GameAction).where(
+                GameAction.lobby_id == lobby_id,
+                GameAction.player_id == player_id,
+                GameAction.action_type == "join"
+            )
+        )
+        return result.scalar_one_or_none() is None
+
     async def add_player_to_lobby(
         self,
         lobby_id: str,
         player_id: str,
         username: str
     ) -> bool:
-        """Add a player to a lobby.
+        """Add a player to a lobby (idempotent join operation).
+        
+        This function handles the join logic only. Card dealing is handled
+        separately in provision_new_player_cards() for new players only.
         
         Args:
             lobby_id: Lobby UUID
@@ -117,16 +141,9 @@ class LobbyService:
         if await self.is_lobby_full(lobby_id):
             return False
         
-        # Check if player already joined
-        existing_join = await self.db.execute(
-            select(GameAction).where(
-                GameAction.lobby_id == lobby_id,
-                GameAction.player_id == player_id,
-                GameAction.action_type == "join"
-            )
-        )
-        if existing_join.scalar_one_or_none():
-            # Player already joined, idempotent operation
+        # Check if player already joined (idempotent)
+        if not await self._is_player_new_to_lobby(lobby_id, player_id):
+            # Player already joined, this is a rejoin - just return success
             return True
         
         # Check if username is already taken in this lobby (case-insensitive)
@@ -142,7 +159,7 @@ class LobbyService:
             lobby.owner_id = player_id
             self.db.add(lobby)
         
-        # Create join action
+        # Create join action (first time player joins)
         join_action = GameAction(
             lobby_id=lobby_id,
             player_id=player_id,
@@ -152,6 +169,48 @@ class LobbyService:
         self.db.add(join_action)
         await self.db.commit()
         
+        return True
+
+    async def provision_new_player_cards(self, lobby_id: str, player_id: str) -> bool:
+        """Deal cards to a newly provisioned player joining a lobby.
+        
+        This function should ONLY be called for new players joining the lobby,
+        never for players who are rejoining. It deals 3 cards to the player.
+        
+        Args:
+            lobby_id: Lobby UUID
+            player_id: Player UUID
+            
+        Returns:
+            True if cards were provisioned, False otherwise
+        """
+        import random
+        from uuid import uuid4
+        from app.config import get_settings
+        from app.models.database import GameAction
+        
+        # Verify lobby exists
+        lobby = await self.get_lobby_by_id(lobby_id)
+        if not lobby:
+            return False
+        
+        settings = get_settings()
+        
+        # Deal 3 cards to the player
+        for _ in range(3):
+            card_value = random.randint(settings.min_card_value, settings.max_card_value)
+            card_id = str(uuid4())
+            
+            action = GameAction(
+                lobby_id=lobby_id,
+                player_id=player_id,
+                action_type="distribute",
+                card_value=card_value,
+                action_metadata=card_id
+            )
+            self.db.add(action)
+        
+        await self.db.commit()
         return True
 
     async def remove_player_from_lobby(

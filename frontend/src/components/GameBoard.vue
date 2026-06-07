@@ -97,6 +97,8 @@
             <span class="history-value">{{ action.card_value }}</span>
             <span class="history-action">on</span>
             <span class="history-target">{{ action.target_username }}</span>
+            <!-- TODO: Add confirmation button for target player to accept/reject card -->
+            <!-- <span class="history-confirmation">[Pending acceptance]</span> -->
           </div>
           <div v-if="gameStore.gameHistory.length === 0" class="no-history">
             No cards played yet

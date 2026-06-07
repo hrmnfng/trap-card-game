@@ -913,3 +913,169 @@ class TestUniqueUsernames:
         # This should fail due to case-insensitive check
         success = await service.add_player_to_lobby(lobby.id, player2.id, "alice")
         assert success is False
+
+
+class TestPlayerProvisioningArchitecture:
+    """Test the separation of join and card provisioning logic."""
+
+    async def test_is_player_new_to_lobby_returns_true_for_new_player(self, db_session: AsyncSession):
+        """Test that _is_player_new_to_lobby returns True for a player who never joined."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        player = Player(username="Alice", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # Player hasn't joined yet
+        is_new = await service._is_player_new_to_lobby(lobby.id, player.id)
+        assert is_new is True
+
+    async def test_is_player_new_to_lobby_returns_false_for_existing_player(self, db_session: AsyncSession):
+        """Test that _is_player_new_to_lobby returns False for a player who already joined."""
+        from app.services.lobby import LobbyService
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        player = Player(username="Alice", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # Player joins for the first time
+        await service.add_player_to_lobby(lobby.id, player.id, "Alice")
+        
+        # Now check - should be False (not new anymore)
+        is_new = await service._is_player_new_to_lobby(lobby.id, player.id)
+        assert is_new is False
+
+    async def test_provision_new_player_cards_deals_three_cards(self, db_session: AsyncSession):
+        """Test that provision_new_player_cards deals exactly 3 cards."""
+        from app.services.lobby import LobbyService
+        from app.models.database import GameAction
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        player = Player(username="Alice", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # Provision cards
+        success = await service.provision_new_player_cards(lobby.id, player.id)
+        assert success is True
+        
+        # Check that exactly 3 distribute actions were created
+        result = await db_session.execute(
+            select(GameAction).where(
+                GameAction.lobby_id == lobby.id,
+                GameAction.player_id == player.id,
+                GameAction.action_type == "distribute"
+            )
+        )
+        actions = result.scalars().all()
+        assert len(actions) == 3
+        
+        # Check that each card has a valid value
+        for action in actions:
+            assert action.card_value is not None
+            assert 1 <= action.card_value <= 10  # Based on default settings
+
+    async def test_rejoin_player_does_not_get_new_cards(self, db_session: AsyncSession):
+        """Test that a player who rejoins doesn't get new cards provisioned."""
+        from app.services.lobby import LobbyService
+        from app.models.database import GameAction
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        player = Player(username="Alice", password_hash="dummy_hash")
+        db_session.add(player)
+        await db_session.commit()
+        await db_session.refresh(player)
+        
+        # First join: player joins and gets cards
+        is_new = await service._is_player_new_to_lobby(lobby.id, player.id)
+        assert is_new is True
+        
+        await service.add_player_to_lobby(lobby.id, player.id, "Alice")
+        await service.provision_new_player_cards(lobby.id, player.id)
+        
+        # Verify player has 3 cards
+        result = await db_session.execute(
+            select(GameAction).where(
+                GameAction.lobby_id == lobby.id,
+                GameAction.player_id == player.id,
+                GameAction.action_type == "distribute"
+            )
+        )
+        initial_actions = result.scalars().all()
+        assert len(initial_actions) == 3
+        
+        # Second join (rejoin): player rejoins
+        is_new = await service._is_player_new_to_lobby(lobby.id, player.id)
+        assert is_new is False  # Not a new player anymore
+        
+        await service.add_player_to_lobby(lobby.id, player.id, "Alice")
+        # Don't provision cards - player is not new
+        
+        # Verify player still has exactly 3 cards (no new ones dealt)
+        result = await db_session.execute(
+            select(GameAction).where(
+                GameAction.lobby_id == lobby.id,
+                GameAction.player_id == player.id,
+                GameAction.action_type == "distribute"
+            )
+        )
+        final_actions = result.scalars().all()
+        assert len(final_actions) == 3  # Same as before
+
+    async def test_new_player_joining_midgame_gets_provisioned(self, db_session: AsyncSession):
+        """Test that a truly new player joining an in-progress game gets cards provisioned."""
+        from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus, GameAction
+        
+        service = LobbyService(db_session)
+        lobby = await service.create_lobby()
+        
+        # First player joins
+        player1 = Player(username="Alice", password_hash="dummy_hash")
+        db_session.add(player1)
+        await db_session.commit()
+        await db_session.refresh(player1)
+        
+        await service.add_player_to_lobby(lobby.id, player1.id, "Alice")
+        
+        # Start game (change status to in-progress)
+        lobby.status = LobbyStatus.IN_PROGRESS.value
+        db_session.add(lobby)
+        await db_session.commit()
+        
+        # Second player joins (truly new to lobby)
+        player2 = Player(username="Bob", password_hash="dummy_hash")
+        db_session.add(player2)
+        await db_session.commit()
+        await db_session.refresh(player2)
+        
+        is_new = await service._is_player_new_to_lobby(lobby.id, player2.id)
+        assert is_new is True
+        
+        # Player2 should get provisioned
+        await service.add_player_to_lobby(lobby.id, player2.id, "Bob")
+        await service.provision_new_player_cards(lobby.id, player2.id)
+        
+        # Verify player2 has 3 cards
+        result = await db_session.execute(
+            select(GameAction).where(
+                GameAction.lobby_id == lobby.id,
+                GameAction.player_id == player2.id,
+                GameAction.action_type == "distribute"
+            )
+        )
+        actions = result.scalars().all()
+        assert len(actions) == 3

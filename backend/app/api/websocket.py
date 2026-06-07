@@ -307,21 +307,50 @@ async def handle_websocket_messages(
                 )
                 
                 if success:
-                    # Get card value for broadcast
-                    cards = await game_service.get_player_cards(lobby.id, player_id)
-                    # Find the played card from history
+                    # Get card value and player/target usernames for broadcast
+                    from app.services.lobby import LobbyService
+                    from sqlalchemy import select
+                    from app.models.database import Player, GameAction
                     
-                    # Broadcast to all clients
+                    lobby_service = LobbyService(db)
+                    
+                    # Get player username
+                    result = await db.execute(
+                        select(Player).where(Player.id == player_id)
+                    )
+                    player = result.scalar_one_or_none()
+                    player_username = player.username if player else "Unknown"
+                    
+                    # Get target player username
+                    result = await db.execute(
+                        select(Player).where(Player.id == target_player_id)
+                    )
+                    target_player = result.scalar_one_or_none()
+                    target_username = target_player.username if target_player else "Unknown"
+                    
+                    # Get the card value from the most recent play_card action
+                    result = await db.execute(
+                        select(GameAction).where(
+                            GameAction.lobby_id == lobby.id,
+                            GameAction.player_id == player_id,
+                            GameAction.action_type == "play_card",
+                            GameAction.action_metadata == card_id
+                        ).order_by(GameAction.timestamp.desc())
+                    )
+                    card_action = result.scalar_one_or_none()
+                    card_value = card_action.card_value if card_action else 0
+                    
+                    # Broadcast card played event to all players in lobby
                     await pubsub_service.broadcast_card_played(
                         lobby.id,
                         player_id,
-                        "Player",  # Would need username
-                        0,  # Would need actual card value
+                        player_username,
+                        card_value,
                         target_player_id,
-                        "Target"  # Would need username
+                        target_username
                     )
                     
-                    # Send updated state to all
+                    # Send updated state to all players
                     game_state = await game_service.get_game_state(lobby.id, player_id)
                     await pubsub_service.broadcast_state_update(lobby.id, game_state)
                 else:

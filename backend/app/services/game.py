@@ -337,7 +337,7 @@ class GameService:
             'status': status,
             'players': player_info,
             'my_cards': my_cards,
-            'history': history
+            'game_history': history
         }
 
     async def has_game_started(self, lobby_id: str) -> bool:

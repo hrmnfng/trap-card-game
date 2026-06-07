@@ -267,7 +267,10 @@ async def join_lobby(
                 detail=f"Username '{user.username}' is already in this lobby"
             )
     
-    # Add existing player to lobby (no need to create new player)
+    # Check if this is a new player to the lobby
+    is_new_player = await lobby_service._is_player_new_to_lobby(lobby.id, user.id)
+    
+    # Add player to lobby (idempotent - safe to call even if already joined)
     success = await lobby_service.add_player_to_lobby(lobby.id, user.id, user.username)
     
     if not success:
@@ -276,32 +279,9 @@ async def join_lobby(
             detail="Failed to join lobby"
         )
     
-    # If game is in-progress, deal cards to the new player
-    if lobby.status == "in-progress":
-        from app.services.game import GameService
-        game_service = GameService(db)
-        
-        # Deal 3 cards to the new player without affecting others
-        import random
-        from app.config import get_settings
-        from app.models.database import GameAction
-        from uuid import uuid4
-        
-        settings = get_settings()
-        for _ in range(3):
-            card_value = random.randint(settings.min_card_value, settings.max_card_value)
-            card_id = str(uuid4())
-            
-            action = GameAction(
-                lobby_id=lobby.id,
-                player_id=user.id,
-                action_type="distribute",
-                card_value=card_value,
-                action_metadata=card_id
-            )
-            db.add(action)
-        
-        await db.commit()
+    # If this is a NEW player joining, provision their starting cards
+    if is_new_player:
+        await lobby_service.provision_new_player_cards(lobby.id, user.id)
     
     return LobbyJoinResponse(
         message=f"Successfully joined lobby {code}",
