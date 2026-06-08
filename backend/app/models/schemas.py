@@ -3,7 +3,38 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+# Auth schemas
+class UserRegisterRequest(BaseModel):
+    """Schema for user registration."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=4, max_length=6)
+
+    @field_validator('password')
+    @classmethod
+    def password_must_be_digits(cls, v: str) -> str:
+        """Validate that password contains only digits."""
+        if not v.isdigit():
+            raise ValueError('Password must contain only digits')
+        return v
+
+
+class UserLoginRequest(BaseModel):
+    """Schema for user login."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=4, max_length=6)
+
+
+class UserResponse(BaseModel):
+    """Response with user information and auth token."""
+
+    user_id: str
+    username: str
+    token: str
 
 
 # Player schemas
@@ -36,16 +67,47 @@ class CardData(BaseModel):
 class LobbyCreate(BaseModel):
     """Schema for creating a new lobby."""
 
-    player_username: str = Field(..., min_length=1, max_length=50)
+    expires_at: datetime | None = None
 
 
 class LobbyResponse(BaseModel):
-    """Response after creating/joining a lobby."""
+    """Response with lobby information."""
 
-    lobby_code: str
-    lobby_id: str
+    id: str
+    code: str
+    status: str
+    owner_id: str | None = None
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+
+
+class LobbyJoinRequest(BaseModel):
+    """Schema for joining a lobby."""
+
+    username: str = Field(..., min_length=1, max_length=50)
+
+
+class LobbyPlayerResponse(BaseModel):
+    """Response with player information in a lobby."""
+
+    id: str
+    username: str
+    joined_at: datetime
+
+
+class LobbyJoinResponse(BaseModel):
+    """Response after joining a lobby."""
+
+    message: str
     player_id: str
-    jwt_token: str
+    lobby_code: str
+
+
+class MessageResponse(BaseModel):
+    """Generic message response."""
+
+    message: str
 
 
 class LobbyState(BaseModel):
@@ -54,6 +116,7 @@ class LobbyState(BaseModel):
     lobby_id: str
     lobby_code: str
     status: Literal["waiting", "active", "ended"]
+    owner_id: str | None = None
     players: list[PlayerView]
     my_cards: list[CardData]  # Player's own cards with values
     game_history: list["GameActionView"]
@@ -116,6 +179,34 @@ class WSErrorMessage(BaseModel):
     type: Literal["error"] = "error"
     message: str
     code: str | None = None
+
+
+# Lobby state schemas
+class LobbyStateResponse(BaseModel):
+    """Response with complete lobby state for reconnection/refresh."""
+
+    id: str
+    code: str
+    status: Literal["waiting", "in-progress", "concluded"]
+    owner_id: str | None
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+    players: list[LobbyPlayerResponse]
+
+
+class LobbyHistoryItem(BaseModel):
+    """Response with lobby summary for history view."""
+
+    id: str
+    code: str
+    status: Literal["waiting", "in-progress", "concluded"]
+    owner_id: str | None
+    owner_username: str | None
+    created_at: datetime
+    expires_at: datetime
+    player_count: int
+    joined_at: datetime  # When the user joined this lobby
 
 
 # FCM schemas

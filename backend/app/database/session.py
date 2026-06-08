@@ -6,14 +6,21 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+# Import logging_config first to configure logging before engine creation
+import app.logging_config  # noqa: F401
+
 from app.config import get_settings
 
 settings = get_settings()
 
-# Create async engine
+# Create async engine  
+# Note: echo=True creates duplicate logs with different formats (SQLAlchemy's native + our custom)
+# To maintain consistent log formatting, echo is disabled
+# SQL queries are not logged to keep console output clean
 engine = create_async_engine(
     str(settings.database_url),
-    echo=settings.debug,
+    echo=False,  # Disabled to prevent duplicate/inconsistent log formats
+    echo_pool=False,  # No pool connection logging
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,

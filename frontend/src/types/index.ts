@@ -31,20 +31,67 @@ export interface LobbyState {
   lobby_id: string
   lobby_code: string
   status: 'waiting' | 'active' | 'ended'
+  owner_id: string | null
   players: Player[]
   my_cards: Card[]
   game_history: GameAction[]
 }
 
 export interface LobbyCreateRequest {
-  player_username: string
+  expires_at?: string
 }
 
 export interface LobbyResponse {
-  lobby_code: string
-  lobby_id: string
+  id: string
+  code: string
+  status: string
+  owner_id: string | null
+  created_at: string
+  expires_at: string
+  player_count: number
+}
+
+export interface LobbyJoinRequest {
+  username: string
+}
+
+export interface LobbyPlayerResponse {
+  id: string
+  username: string
+  joined_at: string
+}
+
+export interface LobbyJoinResponse {
+  message: string
   player_id: string
-  jwt_token: string
+  lobby_code: string
+}
+
+export interface LobbyStateResponse {
+  id: string
+  code: string
+  status: 'waiting' | 'in-progress' | 'concluded'
+  owner_id: string | null
+  created_at: string
+  expires_at: string
+  player_count: number
+  players: LobbyPlayerResponse[]
+}
+
+export interface LobbyHistoryItem {
+  id: string
+  code: string
+  status: 'waiting' | 'in-progress' | 'concluded'
+  owner_id: string | null
+  owner_username: string | null
+  created_at: string
+  expires_at: string
+  player_count: number
+  joined_at: string
+}
+
+export interface MessageResponse {
+  message: string
 }
 
 export interface CardPlayRequest {
