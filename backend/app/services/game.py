@@ -340,7 +340,7 @@ class GameService:
                 'target_id': action.target_id,
                 'target_username': target_username,
                 'card_value': action.card_value,
-                'timestamp': action.timestamp
+                'timestamp': action.timestamp.isoformat() if action.timestamp else None
             })
         
         # Get lobby to include owner_id
