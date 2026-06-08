@@ -19,6 +19,18 @@ The role of this file is to describe common mistakes and confusion points that a
 
 ## Learnings & Resolved Confusion Points
 
+### JSON Serialization in Pub/Sub Broadcasts
+When broadcasting game state via Redis Pub/Sub, ensure all datetime objects are converted to ISO format strings (`.isoformat()`) or JSON will fail silently with "Object of type datetime is not JSON serializable". This is especially important in `game.py:get_game_state()` where timestamps are included in game history.
+
+### Redis Pub/Sub Function Names
+The Redis client utility in `app/redis/client.py` exports `get_redis()` not `get_redis_client()`. Always double-check function names when initializing Redis connections in services.
+
+### WebSocket Game State Updates
+When a player action (like playing a card) needs to be broadcast to all players:
+1. First broadcast the action event (e.g., `card_played`) to update UI
+2. Then broadcast the full `state_update` with the new game state
+3. Ensure all objects in the state dict are JSON-serializable (strings, ints, lists, dicts - no datetime or custom objects)
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

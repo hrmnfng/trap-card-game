@@ -808,8 +808,12 @@ const response = await fetch('/api/my-endpoint', {
   - Updated API service to send Authorization header in createLobby and joinLobby calls
   - Removed request body from joinLobby endpoint (user info comes from token)
   - Updated HUMANS.md with auth patterns and protected endpoint examples
+- **2026-06-08**:
+  - Fixed card targeting feature: Corrected `get_redis_client()` → `get_redis()` in PubSub service
+  - Fixed game state broadcast: Convert datetime objects to ISO format strings for JSON serialization
+  - Card plays now properly broadcast to all players with updated game state
 
 ---
 
-**Last Updated**: 2026-06-07
+**Last Updated**: 2026-06-08
 **Maintained by**: Development Team
