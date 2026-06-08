@@ -1,13 +1,12 @@
 """Firebase Cloud Messaging notification service."""
 
-import logging
 from typing import Any
 
 from app.config import get_settings
+from app.logger import logger
 from app.redis import get_redis
 
 settings = get_settings()
-logger = logging.getLogger(__name__)
 
 
 class NotificationService:

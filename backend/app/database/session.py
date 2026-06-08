@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-# Import logging_config first to configure logging before engine creation
-import app.logging_config  # noqa: F401
+# Import logger first to configure logging before engine creation
+import app.logger  # noqa: F401
 
 from app.config import get_settings
 

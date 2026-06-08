@@ -1,6 +1,5 @@
 """FastAPI dependencies for authentication and authorization."""
 
-import logging
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -8,10 +7,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.logger import logger
 from app.models.database import Player
 from app.services.auth import AuthService
-
-logger = logging.getLogger(__name__)
 
 # OAuth2 scheme for extracting Bearer token from Authorization header
 # tokenUrl points to the login endpoint that issues tokens

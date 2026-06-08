@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import async_session_maker
+from app.logger import logger
 from app.services.lobby import LobbyService
 from app.services.game import GameService
 from app.services.pubsub import PubSubService
@@ -174,7 +175,7 @@ async def websocket_endpoint(
         except Exception as e:
             manager.disconnect(websocket, lobby.id, player_id)
             await pubsub_service.unsubscribe_from_lobby(lobby.id)
-            print(f"WebSocket error: {e}")
+            logger.error(f"WebSocket error: {e}")
 
 
 async def handle_websocket_messages(
@@ -308,7 +309,7 @@ async def handle_websocket_messages(
                 )
                 
                 if success:
-                    print(f"[PLAY_CARD] Card successfully played: {card_id}")
+                    logger.debug(f"Card successfully played: {card_id}")
                     # Get card value and player/target usernames for broadcast
                     from sqlalchemy import select
                     from app.models.database import Player, GameAction
@@ -341,7 +342,7 @@ async def handle_websocket_messages(
                     card_action = result.scalar_one_or_none()
                     card_value = card_action.card_value if card_action else 0
                     
-                    print(f"[PLAY_CARD] Broadcasting card played: {player_username}({card_value}) on {target_username}")
+                    logger.debug(f"Broadcasting card played: {player_username}({card_value}) on {target_username}")
                     # Broadcast card played event to all players in lobby
                     await pubsub_service.broadcast_card_played(
                         lobby.id,
@@ -352,11 +353,11 @@ async def handle_websocket_messages(
                         target_username
                     )
                     
-                    print(f"[PLAY_CARD] Broadcasting state update")
+                    logger.debug("Broadcasting state update")
                     # Send updated state to all players
                     game_state = await game_service.get_game_state(lobby.id, player_id)
                     await pubsub_service.broadcast_state_update(lobby.id, game_state)
-                    print(f"[PLAY_CARD] Broadcast complete")
+                    logger.debug("Broadcast complete")
                 else:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Invalid card play"},
@@ -415,4 +416,4 @@ async def listen_to_pubsub(
         # Task was cancelled, clean exit
         pass
     except Exception as e:
-        print(f"Pub/sub listener error: {e}")
+        logger.error(f"Pub/sub listener error: {e}")

@@ -1,6 +1,5 @@
 """FastAPI application entry point."""
 
-import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -12,11 +11,10 @@ from app.api.lobby import router as lobby_router
 from app.api.websocket import router as websocket_router
 from app.config import get_settings
 from app.database import init_db
+from app.logger import logger
 from app.redis import close_redis, init_redis
 
-# Logging is configured automatically on import via logging_config module
 settings = get_settings()
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

@@ -16,6 +16,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "firebase-admin>=6.5.0",
     "websockets>=13.0",
+    "loguru>=0.7.0",
 ]
 
 [project.optional-dependencies]

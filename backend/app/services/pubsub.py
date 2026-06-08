@@ -4,6 +4,7 @@ import json
 import asyncio
 from typing import Any
 
+from app.logger import logger
 from app.redis.client import get_redis
 
 
@@ -91,13 +92,13 @@ class PubSubService:
             # Serialize message to JSON
             message_json = json.dumps(message)
             
-            print(f"[PUBSUB] Publishing to {channel}: {message.get('type')}")
+            logger.debug(f"Publishing to {channel}: {message.get('type')}")
             # Publish to channel
             result = await redis_client.publish(channel, message_json)
-            print(f"[PUBSUB] Published to {result} subscribers")
+            logger.debug(f"Published to {result} subscribers")
             return result
         except Exception as e:
-            print(f"[PUBSUB] Error publishing: {e}")
+            logger.error(f"Error publishing: {e}")
             return 0
 
     async def get_message(self, lobby_id: str, timeout: float = 1.0) -> dict | None:

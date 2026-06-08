@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     
     # Logging
     log_level: str = "INFO"  # Can override with LOG_LEVEL env var (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    log_format: Literal["simple", "json"] = "simple"  # Log output format (simple for readability, json for cloud)
     
     @field_validator("log_level", mode="before")
     @classmethod
@@ -48,6 +49,16 @@ class Settings(BaseSettings):
             if v in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
                 return v
         return "INFO"
+    
+    @field_validator("log_format", mode="before")
+    @classmethod
+    def parse_log_format(cls, v: str) -> str:
+        """Validate log format."""
+        if isinstance(v, str):
+            v = v.lower()
+            if v in ("simple", "json"):
+                return v
+        return "simple"
 
     # Server
     host: str = "0.0.0.0"

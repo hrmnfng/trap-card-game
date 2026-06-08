@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.logger import logger
 from app.models.database import Player
 from app.services.password import PasswordService
 
@@ -40,7 +41,7 @@ class AuthToken:
                 # Test connection
                 cls._redis_client.ping()
             except Exception as e:
-                print(f"Redis connection failed: {e}, using in-memory fallback")
+                logger.error(f"Redis connection failed, using in-memory fallback: {e}")
                 cls._redis_client = None
         return cls._redis_client
 
@@ -74,7 +75,7 @@ class AuthToken:
                     json.dumps(token_data)
                 )
             except Exception as e:
-                print(f"Redis store failed: {e}, falling back to in-memory")
+                logger.error(f"Redis store failed, falling back to in-memory: {e}")
                 cls._tokens[token] = token_data
         else:
             # Fallback to in-memory storage
@@ -101,7 +102,7 @@ class AuthToken:
                     token_data = json.loads(token_data_str)
                     return token_data['user_id']
             except Exception as e:
-                print(f"Redis lookup failed: {e}, checking in-memory")
+                logger.error(f"Redis lookup failed, checking in-memory: {e}")
         
         # Fallback to in-memory storage
         if token not in cls._tokens:
@@ -130,7 +131,7 @@ class AuthToken:
             try:
                 redis_client.delete(f"auth_token:{token}")
             except Exception as e:
-                print(f"Redis delete failed: {e}")
+                logger.error(f"Redis delete failed: {e}")
         
         # Also remove from in-memory storage
         cls._tokens.pop(token, None)
