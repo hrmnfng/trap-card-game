@@ -1,7 +1,7 @@
 """Tests for authentication API endpoints."""
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
@@ -19,7 +19,7 @@ async def setup_db():
 @pytest.fixture
 async def client():
     """Provide an async HTTP client for testing."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
