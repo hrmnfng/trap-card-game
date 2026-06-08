@@ -36,7 +36,10 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=app --cov-report=html --cov-report=term-missing"
+addopts = "--cov=app --cov-report=html --cov-report=term-missing -v"
+markers = [
+    "asyncio: mark test as an asyncio test",
+]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,15 @@
+{
+  "pins": [
+    {
+      "id": "6a0e60ad-6f25-40f6-9c06-e3a7af85a5b8",
+      "file": "backend\\app\\models\\database.py",
+      "line": 36,
+      "title": "Surely this is not how default values should be used ",
+      "color": "red",
+      "type": "local",
+      "parentFolderId": null,
+      "order": 0
+    }
+  ],
+  "folders": []
+}

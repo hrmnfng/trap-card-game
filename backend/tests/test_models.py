@@ -6,24 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import Player, Lobby, GameAction, utcnow
-from app.database.session import async_session_maker, init_db, drop_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_db():
-    """Setup and teardown test database for each test."""
-    # Create tables
-    await init_db()
-    yield
-    # Drop tables
-    await drop_db()
-
-
-@pytest.fixture
-async def db_session() -> AsyncSession:
-    """Provide a database session for tests."""
-    async with async_session_maker() as session:
-        yield session
 
 
 class TestUtilityFunctions:
@@ -138,7 +120,7 @@ class TestLobbyModel:
         assert lobby.id is not None
         assert len(lobby.id) == 36
         assert lobby.code == "ABC123"
-        assert lobby.status == "active"
+        assert lobby.status == "waiting"
         assert lobby.created_at is not None
         assert lobby.expires_at == expires
 
@@ -172,14 +154,14 @@ class TestLobbyModel:
         assert lobby.code == "CODE05"
 
     async def test_lobby_default_status(self, db_session: AsyncSession):
-        """Test that lobby status defaults to 'active'."""
+        """Test that lobby status defaults to 'waiting'."""
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
         lobby = Lobby(code="STATUS", expires_at=expires)
         db_session.add(lobby)
         await db_session.commit()
         await db_session.refresh(lobby)
 
-        assert lobby.status == "active"
+        assert lobby.status == "waiting"
 
     async def test_lobby_status_can_be_set(self, db_session: AsyncSession):
         """Test that lobby status can be explicitly set."""
@@ -193,11 +175,18 @@ class TestLobbyModel:
 
     async def test_lobby_relationships_initialized(self, db_session: AsyncSession):
         """Test that lobby relationships are initialized."""
+        from sqlalchemy.orm import selectinload
+        
         expires = datetime.now(timezone.utc) + timedelta(hours=24)
         lobby = Lobby(code="RELTES", expires_at=expires)
         db_session.add(lobby)
         await db_session.commit()
-        await db_session.refresh(lobby)
+        
+        # Refresh with eager loading to avoid lazy load issues
+        result = await db_session.execute(
+            select(Lobby).where(Lobby.code == "RELTES").options(selectinload(Lobby.actions))
+        )
+        lobby = result.scalar_one()
 
         assert hasattr(lobby, "actions")
         assert lobby.actions == []

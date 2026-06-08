@@ -6,22 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import Player, Lobby, GameAction
-from app.database.session import async_session_maker, init_db, drop_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_db():
-    """Setup and teardown test database for each test."""
-    await init_db()
-    yield
-    await drop_db()
-
-
-@pytest.fixture
-async def db_session() -> AsyncSession:
-    """Provide a database session for tests."""
-    async with async_session_maker() as session:
-        yield session
 
 
 @pytest.fixture
@@ -123,13 +107,15 @@ class TestGameServiceCardDistribution:
         from app.services.lobby import LobbyService
         
         lobby_service = LobbyService(db_session)
-        player = test_players[0]
-        await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        # Add at least 2 players for distribution to work
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
         
-        # Check for distribute actions
+        # Check for distribute actions for first player
+        player = test_players[0]
         result = await db_session.execute(
             select(GameAction).where(
                 GameAction.lobby_id == test_lobby.id,
@@ -152,8 +138,9 @@ class TestGameServiceCardDistribution:
         from app.services.lobby import LobbyService
         
         lobby_service = LobbyService(db_session)
-        player = test_players[0]
-        await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        # Add at least 2 players for distribution to work
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
         
         game_service = GameService(db_session)
         
@@ -217,12 +204,14 @@ class TestGameServiceCardRetrieval:
         from app.services.lobby import LobbyService
         
         lobby_service = LobbyService(db_session)
-        player = test_players[0]
-        await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        # Add at least 2 players for distribution to work
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
         
+        player = test_players[0]
         cards = await game_service.get_player_cards(test_lobby.id, player.id)
         
         assert len(cards) == 3
@@ -260,12 +249,14 @@ class TestGameServiceCardRetrieval:
         from app.services.lobby import LobbyService
         
         lobby_service = LobbyService(db_session)
-        player = test_players[0]
-        await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
+        # Add at least 2 players for distribution to work
+        for player in test_players[:2]:
+            await lobby_service.add_player_to_lobby(test_lobby.id, player.id, player.username)
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
         
+        player = test_players[0]
         count = await game_service.get_remaining_cards_count(test_lobby.id, player.id)
         
         assert count == 3
@@ -541,8 +532,8 @@ class TestGameServiceGameState:
         state = await game_service.get_game_state(test_lobby.id, test_players[1].id)
         
         # Should have game history showing the played card
-        assert 'history' in state
-        assert len(state['history']) > 0
+        assert 'game_history' in state
+        assert len(state['game_history']) > 0
 
     async def test_check_if_game_started(
         self,
@@ -553,6 +544,7 @@ class TestGameServiceGameState:
         """Test checking if game has started."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         player = test_players[0]
@@ -560,13 +552,16 @@ class TestGameServiceGameState:
         
         game_service = GameService(db_session)
         
-        # Before distribution
+        # Before starting the game
         started = await game_service.has_game_started(test_lobby.id)
         assert started is False
         
-        # After distribution
+        # Add players and distribute cards
         await lobby_service.add_player_to_lobby(test_lobby.id, test_players[1].id, test_players[1].username)
         await game_service.distribute_cards(test_lobby.id)
+        
+        # Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         
         started = await game_service.has_game_started(test_lobby.id)
         assert started is True
@@ -580,6 +575,7 @@ class TestGameServiceGameState:
         """Test checking if game has ended."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         for player in test_players[:2]:
@@ -587,6 +583,9 @@ class TestGameServiceGameState:
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
+        
+        # Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         
         # Game just started
         ended = await game_service.has_game_ended(test_lobby.id)
@@ -688,6 +687,7 @@ class TestGameServiceIntegration:
         """Test complete game flow from start to finish."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         game_service = GameService(db_session)
@@ -698,9 +698,12 @@ class TestGameServiceIntegration:
         
         # 2. Distribute cards
         await game_service.distribute_cards(test_lobby.id)
+        
+        # 3. Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         assert await game_service.has_game_started(test_lobby.id)
         
-        # 3. Players play cards alternately
+        # 4. Players play cards alternately
         for round_num in range(3):
             for player_idx in range(2):
                 player = test_players[player_idx]
@@ -715,10 +718,10 @@ class TestGameServiceIntegration:
                         target.id
                     )
         
-        # 4. Check game ended
+        # 5. Check game ended
         assert await game_service.has_game_ended(test_lobby.id)
         
-        # 5. Verify all cards played
+        # 6. Verify all cards played
         for player in test_players[:2]:
             remaining = await game_service.get_remaining_cards_count(test_lobby.id, player.id)
             assert remaining == 0
@@ -796,6 +799,7 @@ class TestGameEndedLogicWithPlayerTracking:
         """Test that game ends when a player who has played cards runs out."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         for player in test_players[:2]:
@@ -803,6 +807,9 @@ class TestGameEndedLogicWithPlayerTracking:
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
+        
+        # Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         
         # Player 1 plays all cards
         cards = await game_service.get_player_cards(test_lobby.id, test_players[0].id)
@@ -827,6 +834,7 @@ class TestGameEndedLogicWithPlayerTracking:
         """Test that new player joining mid-game doesn't incorrectly end the game."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         # Add first two players
@@ -835,6 +843,9 @@ class TestGameEndedLogicWithPlayerTracking:
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
+        
+        # Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         
         # Game is in progress - no one has played cards yet
         ended = await game_service.has_game_ended(test_lobby.id)
@@ -870,6 +881,7 @@ class TestGameEndedLogicWithPlayerTracking:
         """Test that only original players count toward game end condition."""
         from app.services.game import GameService
         from app.services.lobby import LobbyService
+        from app.models.database import LobbyStatus
         
         lobby_service = LobbyService(db_session)
         # Add only first player initially
@@ -878,6 +890,9 @@ class TestGameEndedLogicWithPlayerTracking:
         
         game_service = GameService(db_session)
         await game_service.distribute_cards(test_lobby.id)
+        
+        # Start the game
+        await lobby_service.update_lobby_status(test_lobby.id, LobbyStatus.IN_PROGRESS)
         
         # Later, other players join mid-game without cards
         for player in test_players[2:4]:

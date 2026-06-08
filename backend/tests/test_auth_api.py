@@ -1,26 +1,7 @@
 """Tests for authentication API endpoints."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.main import app
-from app.database.session import async_session_maker, init_db, drop_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_db():
-    """Setup and teardown test database for each test."""
-    await init_db()
-    yield
-    await drop_db()
-
-
-@pytest.fixture
-async def client():
-    """Provide an async HTTP client for testing."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield client
+from httpx import AsyncClient
 
 
 class TestAuthRegisterEndpoint:

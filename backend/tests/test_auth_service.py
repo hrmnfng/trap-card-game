@@ -5,22 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import Player
 from app.services.auth import AuthService, AuthToken
-from app.database.session import async_session_maker, init_db, drop_db
-
-
-@pytest.fixture(scope="function", autouse=True)
-async def setup_db():
-    """Setup and teardown test database for each test."""
-    await init_db()
-    yield
-    await drop_db()
-
-
-@pytest.fixture
-async def db_session() -> AsyncSession:
-    """Provide a database session for tests."""
-    async with async_session_maker() as session:
-        yield session
 
 
 class TestAuthToken:

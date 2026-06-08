@@ -54,12 +54,14 @@ class GameService:
             return False
         
         # Distribute cards to each player who doesn't already have them
+        cards_distributed = False
         for player in players:
             # Check if player already has cards (late joiner to in-progress game)
             existing_cards = await self.get_player_cards(lobby_id, player.id)
             
             if len(existing_cards) == 0:
                 # Player has no cards yet, distribute starting hand
+                cards_distributed = True
                 for _ in range(self.CARDS_PER_PLAYER):
                     card_value = random.randint(settings.min_card_value, settings.max_card_value)
                     card_id = str(uuid4())
@@ -94,7 +96,7 @@ class GameService:
                 self.db.add(player_game_state)
         
         await self.db.commit()
-        return True
+        return cards_distributed
 
     async def get_player_cards(self, lobby_id: str, player_id: str) -> list[dict]:
         """Get all cards for a player.
