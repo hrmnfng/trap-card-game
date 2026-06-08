@@ -36,7 +36,7 @@ class PubSubService:
             True if subscribed successfully
         """
         try:
-            redis_client = await get_redis_client()
+            redis_client = await get_redis()
             channel = self.get_lobby_channel(lobby_id)
             
             # Create pubsub if not exists
@@ -91,10 +91,13 @@ class PubSubService:
             # Serialize message to JSON
             message_json = json.dumps(message)
             
+            print(f"[PUBSUB] Publishing to {channel}: {message.get('type')}")
             # Publish to channel
             result = await redis_client.publish(channel, message_json)
+            print(f"[PUBSUB] Published to {result} subscribers")
             return result
-        except Exception:
+        except Exception as e:
+            print(f"[PUBSUB] Error publishing: {e}")
             return 0
 
     async def get_message(self, lobby_id: str, timeout: float = 1.0) -> dict | None:

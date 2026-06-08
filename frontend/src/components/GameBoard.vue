@@ -174,14 +174,18 @@ async function playCardOnTarget(targetPlayerId: string) {
   error.value = null
 
   try {
+    console.log('[GameBoard] Playing card:', selectedCard.value.id, 'on target:', targetPlayerId)
     gameStore.playCard(selectedCard.value.id, targetPlayerId)
+    console.log('[GameBoard] Card play message sent')
     selectedCard.value = null
 
     // Wait a moment for state update
     setTimeout(() => {
+      console.log('[GameBoard] Requesting state update')
       gameStore.requestState()
     }, 500)
   } catch (err: any) {
+    console.error('[GameBoard] Error playing card:', err)
     error.value = err.message || 'Failed to play card'
   } finally {
     playingCard.value = false

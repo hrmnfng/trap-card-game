@@ -308,6 +308,7 @@ async def handle_websocket_messages(
                 )
                 
                 if success:
+                    print(f"[PLAY_CARD] Card successfully played: {card_id}")
                     # Get card value and player/target usernames for broadcast
                     from sqlalchemy import select
                     from app.models.database import Player, GameAction
@@ -340,6 +341,7 @@ async def handle_websocket_messages(
                     card_action = result.scalar_one_or_none()
                     card_value = card_action.card_value if card_action else 0
                     
+                    print(f"[PLAY_CARD] Broadcasting card played: {player_username}({card_value}) on {target_username}")
                     # Broadcast card played event to all players in lobby
                     await pubsub_service.broadcast_card_played(
                         lobby.id,
@@ -350,9 +352,11 @@ async def handle_websocket_messages(
                         target_username
                     )
                     
+                    print(f"[PLAY_CARD] Broadcasting state update")
                     # Send updated state to all players
                     game_state = await game_service.get_game_state(lobby.id, player_id)
                     await pubsub_service.broadcast_state_update(lobby.id, game_state)
+                    print(f"[PLAY_CARD] Broadcast complete")
                 else:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Invalid card play"},

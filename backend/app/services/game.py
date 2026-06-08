@@ -170,12 +170,19 @@ class GameService:
         Returns:
             True if card was played successfully, False otherwise
         """
+        print(f"[PLAY_CARD_SERVICE] Starting play_card: {card_id}")
         # Validate card ownership
-        if not await self.player_owns_card(lobby_id, player_id, card_id):
+        owns_card = await self.player_owns_card(lobby_id, player_id, card_id)
+        print(f"[PLAY_CARD_SERVICE] Player owns card: {owns_card}")
+        if not owns_card:
+            print(f"[PLAY_CARD_SERVICE] Player does not own card, returning False")
             return False
         
         # Check if card already played
-        if await self.is_card_played(lobby_id, card_id):
+        already_played = await self.is_card_played(lobby_id, card_id)
+        print(f"[PLAY_CARD_SERVICE] Card already played: {already_played}")
+        if already_played:
+            print(f"[PLAY_CARD_SERVICE] Card already played, returning False")
             return False
         
         # Get card value from distribute action
