@@ -15,6 +15,7 @@ This project is indexed by GitNexus as **trap-card-game** (2305 symbols, 4991 re
 
 ## Never Do
 
+- NEVER commit changes without explicit user approval
 - NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
 - NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
 - NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
