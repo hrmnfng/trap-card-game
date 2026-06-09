@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Trap Card Game",
+    "slug": "trap-card-game",
+    "scheme": "trapcard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trapcard.app"
+    },
+    "android": {
+      "package": "com.trapcard.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"]
+  }
+}

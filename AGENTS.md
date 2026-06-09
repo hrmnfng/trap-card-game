@@ -1,77 +1,100 @@
 # Agent Instructions
 
-The role of this file is to describe common mistakes and confusion points that agents might encounter as they work in this project. If you ever encounter something in the project that surprises you, please alert the developer working with you and indicate that this is the case in the AgentMD file to help prevent future agents from having the same issue.
+The role of this file is to describe common mistakes and confusion points that
+agents might encounter as they work in this project. If you ever encounter
+something that surprises you, alert the developer working with you and note it
+here to help prevent future agents from having the same issue.
 
 ## Project Structure
 
-- This is a greenfield project and its okay to make drastic changes to the codebase.
-- The code base should primarily use Typescript (node v24.14.0) and Python 3.13 (uv)
+- This is a greenfield project and it's okay to make drastic changes.
+- TypeScript (Node v24) across an **npm-workspace monorepo**:
+  - `apps/mobile` — Expo (React Native + react-native-web). **Mobile is the
+    product; web is test-only.** Expo SDK 52.
+  - `apps/party` — Cloudflare Worker + PartyServer Durable Object. One
+    `LobbyDO` per lobby code holds live game state in DO SQLite storage.
+    Replaces FastAPI WebSockets + Redis pub/sub.
+  - `packages/shared` (`@trap/shared`) — single source of truth for types, the
+    WS message contract, and the pure game rules (ported from the legacy
+    `backend/app/services/game.py` and `lobby.py`).
+- D1 holds durable account data (`users`, `device_tokens`, `lobby_history`).
+  Auth is username + password only (no email/recovery); opaque tokens in KV.
+- The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) are
+  being **retired** (Phase 6 cutover). Don't add to them; see
+  `plans/migration-expo-cloudflare.md` and `plans/remaining-work.md`.
 
 ## Code Standards
 
-- All development should follow test driven design, with tests and plans being outlined before any functional changes are made to the code
-- Start with function contracts prior to populating code
-- DRY (Don't Repeat Yourself) - abstract reusable components where possible
-- Don't litter the codebase with emojis where possible
-- Where needed use the following commands to verify package vulnerabilities
-  - frontend: `npm audit`
-  - backend: `uv export --format requirements.txt > requirements.txt | pip-audit`
+- All development follows test-driven design: outline tests/plans and function
+  contracts before functional changes.
+- DRY — abstract reusable components where possible.
+- Don't litter the codebase with emojis.
+- Check vulnerabilities with `npm audit` per workspace (but read the test-pool
+  note below before running `npm audit fix --force` in `apps/party`).
 
-## Learnings & Resolved Confusion Points
+## Verify / Test Commands
 
-### JSON Serialization in Pub/Sub Broadcasts
-When broadcasting game state via Redis Pub/Sub, ensure all datetime objects are converted to ISO format strings (`.isoformat()`) or JSON will fail silently with "Object of type datetime is not JSON serializable". This is especially important in `game.py:get_game_state()` where timestamps are included in game history.
+- Everything: `npm test` (runs each workspace's tests).
+- Per workspace: `npm run test:shared`, `npm run test:party`,
+  `npm run test --workspace=@trap/mobile`.
+- Typecheck: `npm run typecheck` (shared) / `--workspace=@trap/party` /
+  `--workspace=@trap/mobile`.
+- Mobile health (from `apps/mobile`): `npx expo-doctor`, `npx expo install --check`.
+- Worker dev (from `apps/party`): `npx wrangler dev`.
 
-### Redis Pub/Sub Function Names
-The Redis client utility in `app/redis/client.py` exports `get_redis()` not `get_redis_client()`. Always double-check function names when initializing Redis connections in services.
+## Architecture Notes & Resolved Confusion Points
 
-### WebSocket Game State Updates
-When a player action (like playing a card) needs to be broadcast to all players:
-1. First broadcast the action event (e.g., `card_played`) to update UI
-2. Then broadcast the full `state_update` with the new game state
-3. Ensure all objects in the state dict are JSON-serializable (strings, ints, lists, dicts - no datetime or custom objects)
+### Workers test pool & dev-only audit advisories
+`apps/party` is pinned to `@cloudflare/vitest-pool-workers@0.8.19` + `vitest@3.1.4`.
+The newer pool (0.16.x) is audit-clean but its `/config` export does not resolve
+under the current Vite, so it cannot be used yet. The 0.8.19 line carries
+transitive advisories (vite/esbuild/undici/ws/devalue, and the vitest UI server
+CVE) — ALL are in the test runner / dev tooling and are NEVER bundled into the
+deployed Worker (`wrangler deploy` builds only `src/`). Do not run
+`npm audit fix --force` to "fix" these: it will swap in the broken pool version.
+Revisit when the newer pool line works with current Vite.
 
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+### Game rules are pure and deterministic
+`packages/shared/src/gameRules.ts` is framework-agnostic and side-effect free.
+Randomness (card values) and id/timestamp generation are injected via `RuleDeps`,
+so tests are reproducible (see `testUtils.ts`). The `LobbyDO` supplies
+runtime-backed `RuleDeps` (`crypto.randomUUID`, `Math.random`, `Date`).
 
-This project is indexed by GitNexus as **trap-card-game** (2305 symbols, 4991 relationships, 195 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+### Single broadcast path (no dual-path drift)
+`LobbyDO` uses PartyServer's single `broadcast`/`getConnections` for everything
+(the legacy backend had an in-memory `ConnectionManager` AND Redis pub/sub, which
+could drift). Per-player filtered state is sent by iterating connections and
+calling `getGameState(room, playerId)` per connection. Broadcast order for an
+action: send the action event (e.g. `card_played`) first, then the full
+`state_update`. All payloads are JSON-serializable — timestamps are ISO strings,
+never `Date` objects (this removes the legacy `datetime not serializable` hazard).
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+### PartyServer addressing: name resolution + namespace
+- Address the lobby DO via `getServerByName(env.LOBBY, code)` or
+  `routePartykitRequest` — NOT raw `env.LOBBY.idFromName(code)` + `stub.fetch()`.
+  PartyServer must know the room name; in the vitest-pool-workers runtime
+  `ctx.id.name` is undefined, and PartyServer recovers the name from a persisted
+  `__ps_name` record that `getServerByName`/`setName` writes. A raw `stub.fetch()`
+  throws `Cannot determine the name for LobbyDO`.
+- The PartyServer **party namespace is the kebab-case of the DO binding name**
+  (`LOBBY` → `lobby`), NOT the class name (`LobbyDO`). Clients (PartySocket) and
+  WS URLs use `/parties/lobby/:code`.
 
-## Always Do
+### WebSocket integration tests crash the test pool
+Opening a WebSocket via `SELF.fetch` segfaults the workerd bundled with
+`@cloudflare/vitest-pool-workers@0.8.19` (workerd `1.20250417.0`) on Windows
+(`structured exception 0xc0000005: access violation`), even for one connection.
+The 4 WS-transport tests in `apps/party/test/lobby.integration.test.ts` are
+`describe.skip`; the HTTP-level DO tests (create + state) run. Validate the
+realtime path against `wrangler dev` + the Expo client. Re-enable once the
+toolchain ships a workerd that handles in-test WS upgrades on this platform.
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-
-## Never Do
-
-- NEVER commit changes without explicit user approval
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/trap-card-game/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/trap-card-game/clusters` | All functional areas |
-| `gitnexus://repo/trap-card-game/processes` | All execution flows |
-| `gitnexus://repo/trap-card-game/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+### Mobile core is Expo-free and unit-tested
+`apps/mobile/src/lib` + `src/state` avoid importing Expo / React Native so they
+run under vitest (Node). Native dependencies are injected, not imported:
+`configureStorage(...)` for storage, a `socketFactory` for `LobbyConnection`, and
+store factories (`createAuthStore`/`createGameStore`) take deps. The Expo-backed
+implementations live in `src/lib/expoStorage.ts` and `src/lib/push.ts` and are
+wired only at the app entry (`app/_layout.tsx`). Mobile uses **extensionless**
+relative imports (for Metro), unlike `packages/shared` / `apps/party` which use
+`.js` extensions.

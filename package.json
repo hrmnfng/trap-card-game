@@ -1,0 +1,19 @@
+{
+  "name": "trap-card-game",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trap Card Game - Expo + Cloudflare PartyServer multiplayer card game",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=@trap/shared",
+    "test": "npm run test --workspaces --if-present",
+    "test:shared": "npm run test --workspace=@trap/shared",
+    "test:party": "npm run test --workspace=@trap/party"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

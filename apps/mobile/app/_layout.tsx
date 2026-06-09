@@ -1,0 +1,58 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { configureStorage } from '../src/lib/storage';
+import { secureStorage } from '../src/lib/expoStorage';
+import { authStore } from '../src/state/auth';
+import { colors } from '../src/lib/theme';
+
+// Wire the native secure-store implementation before any store reads the
+// persisted auth token. Runs once at module load.
+configureStorage(secureStorage);
+
+export default function RootLayout() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    void authStore
+      .getState()
+      .restoreSession()
+      .finally(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        <Stack.Screen name="index" options={{ title: 'Trap Card Game' }} />
+        <Stack.Screen name="login" options={{ title: 'Sign in' }} />
+        <Stack.Screen name="lobby/[code]" options={{ title: 'Lobby' }} />
+        <Stack.Screen name="game/[code]" options={{ title: 'Game' }} />
+      </Stack>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg,
+  },
+});
