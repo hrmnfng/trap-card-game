@@ -118,6 +118,29 @@ describe('LobbyDO HTTP flow', () => {
   });
 });
 
+describe('CORS preflight', () => {
+  // A browser sends an OPTIONS preflight before a cross-origin POST with a JSON
+  // body. It must answer with a *bodyless* 2xx carrying the Access-Control-*
+  // headers; a 204 with a body throws in workerd, yielding a 500 with no CORS
+  // headers, which the browser surfaces as "NetworkError when attempting to
+  // fetch resource".
+  it('answers OPTIONS with CORS headers and no body', async () => {
+    const res = await SELF.fetch('https://do/api/auth/register', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:8081',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    });
+    expect(res.status).toBeGreaterThanOrEqual(200);
+    expect(res.status).toBeLessThan(300);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(res.headers.get('Access-Control-Allow-Methods')).toContain('POST');
+    expect(await res.text()).toBe('');
+  });
+});
+
 /**
  * Realtime WebSocket flow.
  *

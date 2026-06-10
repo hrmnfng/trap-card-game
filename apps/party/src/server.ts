@@ -27,16 +27,27 @@ export { LobbyDO } from './LobbyDO.js';
 const LOBBY_CODE_LENGTH = 6;
 const LOBBY_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+} as const;
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    },
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
+}
+
+/**
+ * CORS preflight response. Must be bodyless: a 204 carrying a body throws in
+ * workerd ("null body status ... cannot have a body"), producing a 500 with no
+ * CORS headers that browsers report as "NetworkError when attempting to fetch
+ * resource".
+ */
+function preflight(): Response {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
 function generateLobbyCode(): string {
@@ -61,7 +72,7 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
-      return json({}, 204);
+      return preflight();
     }
 
     // ---- Auth -----------------------------------------------------------
