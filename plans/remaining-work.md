@@ -43,7 +43,7 @@ persistence works against a locally-running Worker, from at least two clients.
 - Reference: `apps/party/wrangler.toml`, `apps/party/src/db/schema.sql`, `apps/party/package.json`
 - Create: `apps/mobile/.env` (git-ignored)
 
-- [ ] **Step A1: Start the Worker locally with a fresh local D1.**
+- [x] **Step A1: Start the Worker locally with a fresh local D1.** ✅ 2026-06-10: `db:apply:local` applied schema; `wrangler dev` Ready on http://127.0.0.1:8787 with local D1/KV/DO bindings.
 
 Run (from `apps/party`):
 ```bash
@@ -53,7 +53,7 @@ npx wrangler dev              # serves on http://127.0.0.1:8787 (note the LAN UR
 Expected: wrangler prints `Ready on http://127.0.0.1:8787` (and a `http://<LAN-IP>:8787`).
 Local dev uses Miniflare's local D1/KV, so the `REPLACE_WITH_*` ids don't matter yet.
 
-- [ ] **Step A2: Smoke-test the REST API with curl (no app needed).**
+- [x] **Step A2: Smoke-test the REST API with curl (no app needed).** ✅ 2026-06-10: register→200+token (dup→409), login→200, `POST /api/lobbies`→`{code,status:"waiting"}`, bad token→401. NOTE: lobby state is served by the DO at `/parties/lobby/<code>/state?playerId=<id>`, NOT `/api/lobbies/<code>/state` (no such Worker route).
 
 Run:
 ```bash
@@ -68,7 +68,7 @@ curl -s -XPOST http://127.0.0.1:8787/api/lobbies -H 'authorization: Bearer <toke
 ```
 Expected: `{"code":"XXXXXX","status":"waiting"}`.
 
-- [ ] **Step A3: Point the mobile app at the Worker.**
+- [x] **Step A3: Point the mobile app at the Worker.** ✅ 2026-06-10: created git-ignored `apps/mobile/.env` with LAN IP `192.168.1.31:8787`.
 
 Create `apps/mobile/.env` with the dev machine's LAN IP (so a physical device can reach it):
 ```
@@ -92,9 +92,29 @@ Complete this matrix with two clients (e.g. web + simulator, or two devices):
 - [ ] Client 1 selects a card and plays it on client 2; both see the `card_played` reflected and hands/counts update.
 - [ ] Non-owner Start attempt is rejected (no crash; nothing happens / error surfaced).
 - [ ] Kill and reopen a client mid-lobby; it reconnects to the same lobby and state.
-- [ ] Leave wait ~ and re-fetch `/api/lobbies/.../state` — lobby still present (durability).
+- [ ] Leave wait ~ and re-fetch `/parties/lobby/<code>/state?playerId=<id>` — lobby still present (durability).
 
 Expected: all rows pass. Log any failure as a bug and fix before Phase C.
+
+> **A4 bug fixed (2026-06-10):** web login/register threw *"'fetch' called on an
+> object that does not implement interface Window."* Root cause: `apiClient.ts`
+> stored the global `fetch` on the instance (`this.fetchImpl = ... ?? fetch`) and
+> called it as `this.fetchImpl(...)`, so on the web build `fetch`'s `this` was the
+> ApiClient, not `Window`. Fixed by wrapping the default in a free-function
+> indirection (`const globalFetch: typeof fetch = (i, init) => fetch(i, init)`).
+> Added a regression test that emulates the browser WebIDL `this`-guard (29/29 mobile
+> tests pass, typecheck clean). Native/unit paths never hit it because they inject a
+> mock `fetchImpl`.
+
+> **Protocol-level pre-validation (2026-06-10):** A two-client WebSocket e2e harness
+> (`tmp/e2e-ws.mjs`, run with Node 24's global `WebSocket` against `wrangler dev`) drives
+> the full server loop and passes 18/18: create → two-client join → owner assignment →
+> non-owner `start_game` rejected (`not_owner`) → owner start → 3-card deal → `play_card`
+> (value + hand/count updates) → drop & reconnect recovers in-progress state + hand →
+> HTTP state persistence → play-to-end → `concluded`. This proves the realtime contract
+> end-to-end on real workerd; the remaining A4 rows below are the **client/UI** pass that
+> still needs a human at a device/simulator/browser. (Also confirms the 4 `.skip`ped WS
+> tests fail only in the in-process workers test-pool, not in the product.)
 
 - [ ] **Step A5: (Optional but recommended) re-enable the skipped WS tests to confirm they pass on a non-crashing platform.**
 
