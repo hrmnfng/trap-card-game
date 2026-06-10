@@ -116,6 +116,27 @@ Expected: all rows pass. Log any failure as a bug and fix before Phase C.
 > still needs a human at a device/simulator/browser. (Also confirms the 4 `.skip`ped WS
 > tests fail only in the in-process workers test-pool, not in the product.)
 
+> **Feature added during validation — lobby history (2026-06-10):** the new stack
+> shipped without the legacy "your lobbies" list (users had to type a code after
+> re-login). Implemented end-to-end: the `LobbyDO` records a `lobby_history` row per
+> participating user on join/start/conclude (D1), the Worker serves
+> `GET /api/lobbies/history`, and the Expo Home screen lists them (active = tap to
+> rejoin, concluded = shown but disabled). Upserts use UPDATE-then-INSERT (no
+> `ON CONFLICT`) so they don't need the unique index. Spec/plan:
+> `docs/superpowers/specs/2026-06-10-lobby-history-design.md`,
+> `docs/superpowers/plans/2026-06-10-lobby-history.md`. Tests: `apps/party/test/history.test.ts`
+> + `history.integration.test.ts` (D1/Worker only — they avoid a DO round-trip), plus the
+> mobile `apiClient` test.
+
+> **Pre-existing test-pool flake observed (2026-06-10):** `lobby.integration.test.ts`'s
+> "persists created lobby state…" test (which resolves the **same** Durable Object twice via
+> `getServerByName`) intermittently fails its post-test cleanup with
+> `EBUSY … unlink …\Temp\miniflare-…\do\…LobbyDO\….sqlite` → "Failed to pop isolated storage
+> stack frame." This is a Windows file-handle-release quirk in the pinned
+> `@cloudflare/vitest-pool-workers`, **not** a product or lobby-history regression (that test
+> never touches `lobby_history`). Same family as the `.skip`ped WS tests. New history tests
+> were written to avoid the DO double-resolution so they're reliable.
+
 - [ ] **Step A5: (Optional but recommended) re-enable the skipped WS tests to confirm they pass on a non-crashing platform.**
 
 If running on macOS/Linux CI later, temporarily change `describe.skip` →
