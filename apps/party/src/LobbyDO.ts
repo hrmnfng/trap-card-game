@@ -32,6 +32,7 @@ import type { ServerMessage } from '@trap/shared';
 import { parseClientMessage } from '@trap/shared';
 import type { Env } from './env.js';
 import { getDeviceTokensForUsers } from './auth.js';
+import { recordLobbyHistory } from './history.js';
 import { sendExpoPush } from './push.js';
 
 const STATE_KEY = 'roomState';
@@ -196,6 +197,7 @@ export class LobbyDO extends Server<Env> {
       });
       // Refresh everyone's state so counts reflect the new member.
       await this.broadcastState(room);
+      await recordLobbyHistory(this.env, room);
     }
   }
 
@@ -259,6 +261,7 @@ export class LobbyDO extends Server<Env> {
         await this.saveRoom(room);
         this.broadcastMessage({ type: 'game_started' });
         await this.broadcastState(room);
+        await recordLobbyHistory(this.env, room);
         await this.notifyAll(room, {
           title: 'Game started',
           body: 'The game has begun!',
@@ -317,6 +320,7 @@ export class LobbyDO extends Server<Env> {
             finishedPlayerIds: getFinishedPlayers(concluded),
           });
           await this.broadcastState(concluded);
+          await recordLobbyHistory(this.env, concluded);
           await this.notifyAll(concluded, {
             title: 'Game over',
             body: 'The game has ended.',

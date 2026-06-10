@@ -20,6 +20,7 @@ import {
   register,
   registerDeviceToken,
 } from './auth.js';
+import { listLobbyHistory } from './history.js';
 import type { Env } from './env.js';
 
 export { LobbyDO } from './LobbyDO.js';
@@ -111,6 +112,14 @@ export default {
       }
       const res = await registerDeviceToken(env, user.userId, body.expoToken, body.platform);
       return res.ok ? json(res.value) : json({ error: res.error.message, code: res.error.code }, res.error.status);
+    }
+
+    // ---- Lobby history --------------------------------------------------
+    if (url.pathname === '/api/lobbies/history' && request.method === 'GET') {
+      const token = extractBearer(request.headers.get('Authorization'));
+      const user = await getUserFromToken(env, token);
+      if (!user) return json({ error: 'unauthorized' }, 401);
+      return json({ lobbies: await listLobbyHistory(env, user.userId) });
     }
 
     // ---- Lobby create ---------------------------------------------------
