@@ -1,200 +1,129 @@
 # Trap Card Game
 
-A real-time multiplayer card game with hidden information mechanics, built as a Progressive Web App (PWA).
+A real-time multiplayer card game built on **hidden information** and **targeted
+interaction**: each player holds cards only they can see, plays one against another
+player, and the value is then revealed to everyone. Mobile is the product; the web
+build exists for testing.
 
 ## Architecture
 
-- **Backend**: FastAPI (Python 3.13) with WebSockets
-- **Frontend**: Vue 3 + TypeScript + Vite
-- **Database**: PostgreSQL
-- **Cache/Pub-Sub**: Redis
-- **Push Notifications**: Firebase Cloud Messaging (FCM)
-- **Deployment**: Docker Compose
+An npm-workspace monorepo on TypeScript (Node 24):
 
-## Features
+- **`apps/mobile`** — Expo (React Native + react-native-web), Expo SDK 52. The
+  client: expo-router screens, Zustand stores, a `partysocket` realtime client.
+- **`apps/party`** — Cloudflare Worker + a PartyServer Durable Object (`LobbyDO`,
+  one per lobby) holding live game state in DO SQLite. Backed by **D1** (accounts,
+  device tokens, lobby history) and **KV** (opaque auth tokens). Replaces the
+  retired FastAPI + Redis + Postgres backend.
+- **`packages/shared`** (`@trap/shared`) — single source of truth for the domain
+  types, the WebSocket message contract, and the pure, deterministic game rules.
 
-- Real-time WebSocket communication
-- Hidden card mechanics
-- Push notifications when targeted
-- PWA with offline support
-- Mobile-first responsive design
+Auth is username + password only (PBKDF2 via Web Crypto, no email/recovery); tokens
+are opaque values in KV. Push notifications use **Expo Push** (mobile only, requires
+an Expo Dev Build on device).
+
+## Game mechanics
+
+1. **Lobby**: create or join with a 6-character code (joining = connecting over the
+   WebSocket; there is no HTTP join).
+2. **Deal**: each player starts with 3 hidden cards (values 1–9).
+3. **Play**: choose a hidden card and target another player. There is **no turn
+   order** (free-for-all).
+4. **Reveal**: the card's value becomes public; the targeted player is notified.
+5. **End**: the game concludes the moment any player who has played a card runs out
+   of cards.
 
 ## Prerequisites
 
-- Docker & Docker Compose
-- Node.js 22+ (for local development)
-- Python 3.13+ (for local development)
-- uv (Python package manager)
+- Node.js 24+ and npm (workspaces).
+- A Cloudflare account (for remote deploy; local dev uses Miniflare, no account
+  needed).
+- Expo tooling for the mobile app (`npx expo …`); an Expo Dev Build for on-device
+  push.
 
-## Quick Start
-
-### Using Docker Compose (Recommended)
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
-```
-
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
-### Local Development
-
-#### Backend
+## Setup
 
 ```bash
-cd backend
-
-# Install dependencies
-uv sync --dev
-
-# Run migrations (create tables)
-uv run python -c "from app.database import init_db; import asyncio; asyncio.run(init_db())"
-
-# Start development server
-uv run uvicorn app.main:app --reload
-
-# Run tests
-uv run pytest
+npm install          # installs all workspaces from the repo root
 ```
 
-#### Frontend
+## Running locally
+
+**Worker** (from `apps/party`):
 
 ```bash
-cd frontend
-
-# Install dependencies
-npm install --legacy-peer-deps
-
-# Start development server
-npm run dev
-
-# Run tests
-npm run test
-
-# Build for production
-npm run build
+npm run db:apply:local      # apply src/db/schema.sql to the local (Miniflare) D1
+npx wrangler dev            # serves on http://127.0.0.1:8787
 ```
 
-## Environment Variables
-
-### Backend (.env)
+**Mobile** (from `apps/mobile`): create a git-ignored `.env`, then start Expo:
 
 ```bash
-# Database
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=trapcard
-POSTGRES_PASSWORD=trapcard
-POSTGRES_DB=trapcard_game
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# JWT
-JWT_SECRET_KEY=your-secret-key-change-in-production
-
-# Firebase (optional)
-FIREBASE_CREDENTIALS_PATH=/path/to/firebase-credentials.json
-FCM_ENABLED=true
+# .env
+EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:8787   # localhost for web/simulator
+EXPO_PUBLIC_PARTY_HOST=<LAN-IP>:8787            # host:port, no scheme
 ```
-
-### Frontend (.env)
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_BASE_URL=ws://localhost:8000
-
-# Firebase configuration
-VITE_FIREBASE_API_KEY=your-api-key
-VITE_FIREBASE_PROJECT_ID=your-project-id
-# ... other Firebase config
+npx expo start              # press w (web), i/a (simulators), or scan for a device
 ```
 
-## Game Mechanics
+See `QUICKSTART.md` for the end-to-end local + deploy walkthrough.
 
-1. **Lobby Creation**: Create or join a lobby with a unique code
-2. **Card Distribution**: Each player gets 3 hidden cards (values 1-9)
-3. **Card Play**: Choose a hidden card and target another player
-4. **Reveal**: The card value becomes public and the target is notified
-5. **Leaderboard**: Track cards revealed and tagging history
-
-## Testing
-
-### Backend Tests
+## Testing & typechecking
 
 ```bash
-cd backend
-uv run pytest --cov=app --cov-report=html
+npm test                                  # all workspaces
+npm run test:shared                       # packages/shared
+npm run test:party                        # apps/party (Vitest workers pool)
+npm run test --workspace=@trap/mobile     # apps/mobile
+
+npm run typecheck                         # packages/shared
+npm run typecheck --workspace=@trap/party
+npm run typecheck --workspace=@trap/mobile
 ```
 
-### Frontend Tests
+Mobile health checks (from `apps/mobile`): `npx expo-doctor`, `npx expo install --check`.
+
+> Note: some `apps/party` integration tests are `describe.skip` due to a Windows
+> quirk in the pinned `@cloudflare/vitest-pool-workers` (in-test WebSocket upgrades
+> segfault; DO storage cleanup can hit `EBUSY`). See `AGENTS.md` for details and the
+> reliable test patterns.
+
+## Deploying
 
 ```bash
-cd frontend
-npm run test:coverage
+# from apps/party
+npx wrangler d1 create trapcard            # -> copy database_id into wrangler.toml
+npx wrangler kv namespace create TOKENS    # -> copy id into wrangler.toml
+npm run db:apply:remote                    # apply schema to the remote D1
+npx wrangler deploy                        # deploy the Worker
 ```
 
-## Security Audit
+Point the production app config at the deployed URL via `EXPO_PUBLIC_*`, and build
+the mobile app with EAS (`eas build`). Full steps in `QUICKSTART.md`.
 
-```bash
-# Frontend
-cd frontend
-npm audit
-
-# Backend
-cd backend
-uv export --format requirements.txt > requirements.txt
-pip-audit -r requirements.txt
-```
-
-## Project Structure
+## Project structure
 
 ```
 trap-card-game/
-├── backend/
-│   ├── app/
-│   │   ├── database/      # Database models and session
-│   │   ├── models/        # Pydantic schemas
-│   │   ├── redis/         # Redis client
-│   │   ├── services/      # Business logic
-│   │   ├── websocket/     # WebSocket handlers
-│   │   ├── config.py      # Configuration
-│   │   └── main.py        # FastAPI app
-│   ├── tests/
-│   └── pyproject.toml
-├── frontend/
-│   ├── src/
-│   │   ├── components/    # Vue components
-│   │   ├── views/         # Page views
-│   │   ├── stores/        # Pinia stores
-│   │   ├── services/      # API clients
-│   │   ├── types/         # TypeScript types
-│   │   └── main.ts
-│   ├── public/
-│   └── package.json
-├── plans/                 # Design documents
-├── docker-compose.yml
+├── apps/
+│   ├── mobile/            # Expo client (app/ routes, src/lib, src/state)
+│   └── party/             # Worker + LobbyDO (src/, test/, src/db/schema.sql)
+├── packages/
+│   └── shared/            # @trap/shared: types, messages, gameRules
+├── docs/superpowers/      # feature specs & implementation plans
+├── plans/                 # migration plan + remaining work
+├── AGENTS.md              # conventions, gotchas, resolved confusion points
+├── CLAUDE.md              # guidance for Claude Code
 └── README.md
 ```
 
 ## Contributing
 
-This project follows Test-Driven Development (TDD):
-
-1. Write tests first
-2. Implement functionality
-3. Run tests to verify
-4. Refactor as needed
+Test-driven: outline tests and function contracts before functional changes. Keep
+`packages/shared` the single source of truth for cross-cutting types and the WS
+contract. Read `AGENTS.md` before editing — it documents the project's sharp edges.
 
 ## License
 

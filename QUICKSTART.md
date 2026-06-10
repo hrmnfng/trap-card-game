@@ -1,270 +1,121 @@
-# Quick Start Guide
+# Quick Start
 
-## Phase 1 Complete - Infrastructure Ready
+Get the Trap Card Game running locally, then deploy it. For architecture and the
+full command reference see `README.md`; for conventions and gotchas see `AGENTS.md`.
 
-We've successfully completed Phase 1 of the Trap Card Game implementation. Here's what's ready and how to test it.
+## Prerequisites
 
-## What's Been Built
-
-### Backend ✅
-
-- FastAPI application structure
-- PostgreSQL database models (Player, Lobby, GameAction)
-- Redis client with pub/sub support
-- Firebase Cloud Messaging integration
-- Configuration system with environment variables
-- Basic API endpoints (/health, /)
-
-### Frontend ✅
-
-- Vue 3 + TypeScript + Vite setup
-- PWA configuration with manifest
-- TypeScript type definitions
-- Pinia state management structure
-- Firebase client setup for notifications
-
-### Infrastructure ✅
-
-- Docker Compose with PostgreSQL, Redis, Backend, Frontend
-- Multi-stage Dockerfiles for production builds
-- Nginx configuration for frontend production
-- Volume persistence for databases
-
-## Quick Test
-
-### Option 1: Docker Compose (Recommended)
+- Node.js 24+ and npm.
+- Expo tooling (`npx expo …`) for the mobile app.
+- A Cloudflare account — only for the deploy section (local dev uses Miniflare).
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# Check services are running
-docker-compose ps
-
-# View logs
-docker-compose logs -f backend
-
-# The services will be available at:
-# - Frontend: http://localhost:5173
-# - Backend: http://localhost:8000
-# - API Docs: http://localhost:8000/docs
-# - PostgreSQL: http://localhost:5432
-# - Redis: http://localhost:6379
+npm install            # from the repo root; installs all workspaces
 ```
 
-### Option 2: Local Development
+## 1. Run it locally
 
-#### Terminal 1 - Start PostgreSQL and Redis
+### Worker (Durable Object + D1 + KV)
+
+From `apps/party`:
 
 ```bash
-docker-compose up postgres redis
+npm run db:apply:local      # apply src/db/schema.sql to the local D1
+npx wrangler dev            # serves on http://127.0.0.1:8787 (note the LAN URL too)
 ```
 
-#### Terminal 2 - Start Backend
+Local dev uses Miniflare's local D1/KV/DO, so the `REPLACE_WITH_*` ids in
+`wrangler.toml` don't matter yet.
+
+Smoke-test without the app:
 
 ```bash
-cd backend
+curl -s -XPOST http://127.0.0.1:8787/api/auth/register \
+  -H 'content-type: application/json' \
+  -d '{"username":"alice","password":"password1"}'
+# -> {"userId":"...","username":"alice","token":"..."}
 
-# Activate virtual environment
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Run the application
-uv run uvicorn app.main:app --reload
-
-# Test the endpoints
-# http://localhost:8000/health
-# http://localhost:8000/docs
+curl -s -XPOST http://127.0.0.1:8787/api/lobbies -H 'authorization: Bearer <token>'
+# -> {"code":"XXXXXX","status":"waiting"}
 ```
 
-#### Terminal 3 - Start Frontend
+(Lobby state is served by the DO at `/parties/lobby/<code>/state?playerId=<id>`,
+not by a `/api/lobbies/<code>` route.)
+
+### Mobile app
+
+From `apps/mobile`, create a git-ignored `.env` pointing at the Worker. Use the
+dev machine's LAN IP so a physical device can reach it (localhost/127.0.0.1 is fine
+for web and simulators):
 
 ```bash
-cd frontend
-
-# Start development server
-npm run dev
-
-# Access at http://localhost:5173
+# apps/mobile/.env
+EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:8787
+EXPO_PUBLIC_PARTY_HOST=<LAN-IP>:8787        # host:port, no scheme
 ```
-
-## Verify Installation
-
-### Backend Health Check
 
 ```bash
-curl http://localhost:8000/health
-# Expected: {"status":"healthy"}
+npx expo start              # press w (web), i/a (simulators), or scan for a device
 ```
 
-### Test Database Connection
+### Try it with two clients
+
+Register a user; create a lobby on client 1; open the same code on client 2 (or tap
+it under "Your lobbies"); start the game (owner, 2+ players); play a card and watch
+both update. The game ends when a player who has played runs out of cards.
+
+## 2. Verify
 
 ```bash
-# Connect to PostgreSQL
-docker exec -it trapcard-postgres psql -U trapcard -d trapcard_game
-
-# List tables (should be empty until migrations run)
-\dt
-
-# Exit
-\q
+npm test                                  # shared + party + mobile
+npm run typecheck                         # + --workspace=@trap/party / @trap/mobile
 ```
 
-### Test Redis Connection
+(Some `apps/party` WS/DO integration tests are `describe.skip` on Windows — see
+`AGENTS.md`. The shared, mobile, and D1/Worker tests are the reliable signal.)
+
+## 3. Deploy to Cloudflare
+
+From `apps/party` (after `npx wrangler login`):
 
 ```bash
-# Connect to Redis
-docker exec -it trapcard-redis redis-cli
-
-# Test command
-PING
-# Expected: PONG
-
-# Exit
-exit
+npx wrangler d1 create trapcard            # copy database_id -> wrangler.toml
+npx wrangler kv namespace create TOKENS    # copy id          -> wrangler.toml
+npm run db:apply:remote                    # apply schema to the remote D1
+npx wrangler deploy                        # -> https://trapcard-party.<sub>.workers.dev
 ```
 
-## Run Tests
+Smoke-test the deployed URL with the curls from step 1.
 
-### Backend Tests
+### Production app config + push
+
+Point the app at the deployed Worker for production builds:
+
+```
+EXPO_PUBLIC_API_BASE_URL=https://trapcard-party.<sub>.workers.dev
+EXPO_PUBLIC_PARTY_HOST=trapcard-party.<sub>.workers.dev
+```
+
+Push notifications need an Expo **Dev Build** (not Expo Go):
 
 ```bash
-cd backend
-uv run pytest -v
-
-# With coverage
-uv run pytest --cov=app --cov-report=html
+npx expo install expo-dev-client
+npx eas build --profile development --platform ios   # and/or android
 ```
 
-### Frontend Tests
+After login on the device, confirm `POST /api/devices` registers a token
+(`npx wrangler tail`) and that a targeted card-play delivers a push.
 
-```bash
-cd frontend
-npm run test
-```
+## Troubleshooting
 
-## Common Issues
+- **`NetworkError` on web** — the Worker isn't running, or a CORS preflight failed.
+  Confirm `wrangler dev` is up and `EXPO_PUBLIC_API_BASE_URL` is correct.
+- **Port 8787 in use** — stop the other `wrangler dev` (Windows:
+  `netstat -ano | findstr :8787`).
+- **`npm audit fix --force` in `apps/party`** — don't; it swaps in a broken test-pool
+  version. See `AGENTS.md`.
 
-### Issue: Port already in use
+## Next steps
 
-```bash
-# Check what's using the port
-# Windows
-netstat -ano | findstr :8000
-
-# Linux/Mac
-lsof -i :8000
-
-# Solution: Stop the process or change port in docker-compose.yml
-```
-
-### Issue: Docker containers won't start
-
-```bash
-# Remove all containers and volumes
-docker-compose down -v
-
-# Rebuild images
-docker-compose build --no-cache
-
-# Start again
-docker-compose up -d
-```
-
-### Issue: Frontend dependency errors
-
-```bash
-cd frontend
-
-# Clean install
-rm -rf node_modules package-lock.json
-npm install --legacy-peer-deps
-```
-
-### Issue: Backend dependencies not installing
-
-```bash
-cd backend
-
-# Remove virtual environment
-rm -rf .venv
-
-# Reinstall
-uv sync --dev
-```
-
-## Security Audit
-
-### Frontend
-
-```bash
-cd frontend
-npm audit
-```
-
-### Backend
-
-```bash
-cd backend
-uv export --format requirements.txt > requirements.txt
-pip-audit -r requirements.txt
-```
-
-## Next Steps
-
-Now that Phase 1 is complete, we're ready to proceed with Phase 2:
-
-1. **Database Model Tests** - Write comprehensive tests for SQLAlchemy models
-2. **Lobby Service** - Implement lobby creation and management with TDD
-3. **Game Service** - Implement card game logic with TDD
-4. **WebSocket Handler** - Real-time communication layer
-5. **Frontend Components** - Build the UI
-
-See `plans/implementation-plan.md` for detailed Phase 2 tasks.
-
-## Project Structure
-
-```text
-trap-card-game/
-├── backend/          # Python FastAPI backend
-├── frontend/         # Vue 3 frontend
-├── plans/            # Design and planning docs
-├── docker-compose.yml
-├── README.md         # Full documentation
-├── QUICKSTART.md     # This file
-└── AGENTS.md         # AI agent instructions
-```
-
-## Need Help?
-
-- Check `README.md` for comprehensive documentation
-- Check `plans/implementation-plan.md` for detailed technical plan
-- Review `plans/outline.md` for original design
-- Check backend API docs at `http://localhost:8000/docs`
-
-## Development Tips
-
-1. **Backend Development**:
-   - FastAPI auto-reloads on code changes
-   - Use `/docs` for interactive API testing
-   - Check logs with `docker-compose logs -f backend`
-
-2. **Frontend Development**:
-   - Vite hot-reloads instantly
-   - TypeScript catches errors at compile time
-   - Use Vue DevTools browser extension
-
-3. **Database Changes**:
-   - Modify models in `backend/app/models/database.py`
-   - Recreate tables: `docker-compose down -v && docker-compose up -d`
-   - Consider adding Alembic for migrations later
-
-4. **Testing Philosophy**:
-   - Write tests first (TDD)
-   - Test behavior, not implementation
-   - Aim for >80% coverage
-
-## Celebrate
-
-Phase 1 is complete! The foundation is solid and ready for building the core game logic.
-
-Ready to build something awesome? Let's go! 🚀
+The remaining roadmap (local validation gate, Cloudflare provisioning, cutover, and
+deferred graphics polish) lives in `plans/remaining-work.md`.
