@@ -19,9 +19,15 @@ here to help prevent future agents from having the same issue.
     `backend/app/services/game.py` and `lobby.py`).
 - D1 holds durable account data (`users`, `device_tokens`, `lobby_history`).
   Auth is username + password only (no email/recovery); opaque tokens in KV.
+  `lobby_history` is written by the `LobbyDO` (on join / start / conclude) and
+  read via `GET /api/lobbies/history` — it backs the Home "your lobbies" list.
 - The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) are
-  being **retired** (Phase 6 cutover). Don't add to them; see
-  `plans/migration-expo-cloudflare.md` and `plans/remaining-work.md`.
+  being **retired** (Phase 6 cutover). Don't add to them.
+- **Plans:** the live docs are `plans/migration-expo-cloudflare.md` (overall
+  migration + status) and `plans/remaining-work.md` (executable remaining work).
+  `plans/outline.md` and `plans/implementation-plan.md` describe the **legacy**
+  FastAPI/Redis/Vue stack and are superseded — ignore them (slated for removal in
+  the Phase 6 cutover). Feature designs live under `docs/superpowers/`.
 
 ## Code Standards
 
@@ -89,6 +95,31 @@ The 4 WS-transport tests in `apps/party/test/lobby.integration.test.ts` are
 realtime path against `wrangler dev` + the Expo client. Re-enable once the
 toolchain ships a workerd that handles in-test WS upgrades on this platform.
 
+### Test pool: isolated-storage / EBUSY failures (Windows)
+Same pinned pool, separate failure mode from the WS segfault. Symptom:
+`Failed to pop isolated storage stack frame` / `Isolated storage failed`, with an
+`EBUSY: ... unlink ...\Temp\miniflare-...\do\...LobbyDO\....sqlite` in the logs
+above it (Windows releases the DO SQLite handle too late for the post-test
+cleanup). Two known triggers:
+- A test that **resolves the same Durable Object twice** in one test (e.g.
+  `getServerByName` in a helper *and* again to read state back) — flaky here.
+  `lobby.integration.test.ts`'s "persists created lobby state…" test hits this.
+- Adding a **UNIQUE index** on `lobby_history` to the test D1 in
+  `test/setup.ts` — reproducibly trips it (prod `schema.sql` keeps the index;
+  the test schema deliberately omits it).
+Guidance: write new integration tests against the **Worker + D1 only** (no DO
+round-trip) — see `apps/party/test/history.integration.test.ts`. D1 unit tests
+(`history.test.ts`) are fine. Keep D1 upserts index-independent: `recordLobbyHistory`
+uses **UPDATE-then-INSERT**, not `INSERT ... ON CONFLICT`, so it needs no unique index.
+
+### CORS preflight must be bodyless
+Browsers (Expo web) send an `OPTIONS` preflight before cross-origin JSON POSTs.
+The Worker must answer with a **bodyless** 2xx carrying the `Access-Control-*`
+headers. A 204 with a body throws in workerd (`Response with null body status ...
+cannot have a body`), yielding a 500 with no CORS headers that the browser reports
+as "NetworkError when attempting to fetch resource." `server.ts` uses
+`new Response(null, { status: 204, headers: CORS_HEADERS })` via `preflight()`.
+
 ### Mobile core is Expo-free and unit-tested
 `apps/mobile/src/lib` + `src/state` avoid importing Expo / React Native so they
 run under vitest (Node). Native dependencies are injected, not imported:
@@ -98,3 +129,12 @@ implementations live in `src/lib/expoStorage.ts` and `src/lib/push.ts` and are
 wired only at the app entry (`app/_layout.tsx`). Mobile uses **extensionless**
 relative imports (for Metro), unlike `packages/shared` / `apps/party` which use
 `.js` extensions.
+
+### Call the global `fetch` as a free function (web)
+The web build throws `'fetch' called on an object that does not implement
+interface Window` if the global `fetch` is stored on an instance and invoked as a
+method (`this.fetchImpl(...)`), because the browser's WebIDL binding requires
+`fetch`'s `this` to be the global. `apiClient.ts` defaults to a free-function
+indirection (`const globalFetch: typeof fetch = (i, init) => fetch(i, init)`).
+Node/RN don't enforce this; an injected mock `fetchImpl` bypasses it, so unit
+tests need the regression test that emulates the browser `this`-guard.

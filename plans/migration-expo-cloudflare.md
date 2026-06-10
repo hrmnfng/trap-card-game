@@ -19,8 +19,21 @@
 | 6 | Cutover — delete old `frontend/`/`backend/`, update docs, `npm audit` | ⬜ pending (medium) |
 | 7 | Graphics polish with R3F native (deferred effects) | ⬜ pending (low) |
 
-Phases 0–4 produced real code under `apps/party/` and `packages/shared/` (currently
-untracked in git). The work lives on branch `feat/game-mechanics`.
+Phases 0–4 produced real code under `apps/party/` and `packages/shared/`. The work
+lives on branch `feat/game-mechanics` (committed + pushed).
+
+### Post-extraction updates (2026-06-10)
+- **Lobby history shipped.** The `LobbyDO` records a `lobby_history` row per
+  participating user on join / start / conclude (D1), the Worker serves
+  `GET /api/lobbies/history`, and the Expo Home screen lists them (active = tap to
+  rejoin; concluded = shown, disabled). Upserts use UPDATE-then-INSERT (no
+  `ON CONFLICT`). Design: `docs/superpowers/specs/2026-06-10-lobby-history-design.md`.
+- **Web-build fixes during A4 prep:** CORS preflight now returns a bodyless 204
+  (a 204-with-body threw in workerd → "NetworkError" on web); the API client calls
+  the global `fetch` as a free function (browser WebIDL `this`-binding). Both are
+  documented in `AGENTS.md`.
+- **Status:** Phase A's device/UI pass (A4) is still the outstanding gate; Phases
+  B (deploy) and C (cutover) follow. See `plans/remaining-work.md`.
 
 ### Phase 4b resolution (2026-06-09)
 
@@ -120,7 +133,7 @@ ported from `backend/app/services/game.py`:
 - `db/schema.sql`:
   - `users(id, username UNIQUE, password_hash, created_at)`
   - `device_tokens(id, user_id, expo_token, platform, created_at)`
-  - `lobby_history(id, code, user_id, status, owner_id, created_at, joined_at)`
+  - `lobby_history(id, code, user_id, status, owner_id, owner_username, player_count, created_at, joined_at)`
 - `auth.ts` (port `services/auth.py` + `password.py`): `POST /api/auth/register`,
   `POST /api/auth/login` → `{user_id, username, token}`, `GET /api/auth/me`.
   **PBKDF2 via Web Crypto** (no bcrypt on Workers). Token = opaque value in KV w/ TTL
