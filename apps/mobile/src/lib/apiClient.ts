@@ -38,6 +38,18 @@ export interface CreateLobbyResponse {
   status: string;
 }
 
+/**
+ * The global `fetch`, wrapped so it is always invoked as a free function rather
+ * than as a method of an `ApiClient` instance. Browsers' WebIDL binding throws
+ * "'fetch' called on an object that does not implement interface Window" when
+ * `fetch`'s `this` is anything other than the global (Window) — which is what
+ * happened when the global was stored on the instance and called as
+ * `this.fetchImpl(...)`. Calling bare `fetch(...)` here keeps `this` correct on
+ * web, and is a transparent indirection on React Native / Node. The lookup is
+ * deferred to call time so a late-installed polyfill is still picked up.
+ */
+const globalFetch: typeof fetch = (input, init) => fetch(input, init);
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -45,7 +57,7 @@ export class ApiClient {
 
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? config.apiBaseUrl;
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? globalFetch;
     this.getToken = options.getToken ?? (() => null);
   }
 

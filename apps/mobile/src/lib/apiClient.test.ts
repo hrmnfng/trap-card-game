@@ -115,4 +115,35 @@ describe('ApiClient', () => {
     });
     await expect(api.register('a', 'b')).rejects.toBeInstanceOf(ApiError);
   });
+
+  it('invokes the global fetch without an illegal `this` binding (web build regression)', async () => {
+    // The web build failed with "'fetch' called on an object that does not
+    // implement interface Window" because the global `fetch` was stored on the
+    // instance and called as `this.fetchImpl(...)`, making `this` the ApiClient.
+    // Browsers enforce that `fetch`'s `this` is the global (Window); Node/undici
+    // does not, so we emulate that guard here to lock in the fix.
+    const original = globalThis.fetch;
+    const calls: unknown[][] = [];
+    const fakeFetch = function (this: unknown, ...args: unknown[]) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError(
+          "'fetch' called on an object that does not implement interface Window."
+        );
+      }
+      calls.push(args);
+      return Promise.resolve(
+        jsonResponse({ userId: 'u1', username: 'alice', token: 't1' })
+      );
+    };
+    globalThis.fetch = fakeFetch as unknown as typeof fetch;
+    try {
+      const api = new ApiClient({ baseUrl: 'https://api.test' }); // no fetchImpl -> global path
+      await expect(api.register('alice', 'password1')).resolves.toMatchObject({
+        token: 't1',
+      });
+      expect(calls).toHaveLength(1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });
