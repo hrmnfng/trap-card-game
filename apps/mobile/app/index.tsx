@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import type { LobbyHistoryItem } from '@trap/shared';
 import { authStore, selectIsAuthenticated } from '../src/state/auth';
 import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
@@ -18,6 +21,35 @@ export default function HomeScreen() {
   const username = useAuth((s) => s.username);
   const [joinCode, setJoinCode] = useState('');
   const [creating, setCreating] = useState(false);
+  const [history, setHistory] = useState<LobbyHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAuthenticated) return;
+      let active = true;
+      setLoadingHistory(true);
+      api
+        .listLobbyHistory()
+        .then((items) => {
+          if (active) setHistory(items);
+        })
+        .catch(() => {
+          if (active) setHistory([]);
+        })
+        .finally(() => {
+          if (active) setLoadingHistory(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, [isAuthenticated])
+  );
+
+  const openLobby = (item: LobbyHistoryItem) => {
+    if (item.status === 'concluded') return;
+    router.push(`/lobby/${item.code}`);
+  };
 
   if (!isAuthenticated) {
     return (
@@ -64,6 +96,33 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
       </Pressable>
 
+      <Text style={styles.sectionLabel}>Your lobbies</Text>
+      {loadingHistory ? (
+        <ActivityIndicator color={colors.muted} />
+      ) : history.length === 0 ? (
+        <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
+      ) : (
+        <FlatList
+          style={styles.list}
+          data={history}
+          keyExtractor={(item) => item.code}
+          renderItem={({ item }) => (
+            <Pressable
+              style={styles.lobbyRow}
+              onPress={() => openLobby(item)}
+              disabled={item.status === 'concluded'}
+            >
+              <Text style={styles.lobbyCode}>{item.code}</Text>
+              <Text style={styles.lobbyMeta}>
+                {item.status} · {item.playerCount} player
+                {item.playerCount === 1 ? '' : 's'}
+                {item.ownerUsername ? ` · host ${item.ownerUsername}` : ''}
+              </Text>
+            </Pressable>
+          )}
+        />
+      )}
+
       <View style={styles.joinRow}>
         <TextInput
           style={styles.input}
@@ -104,6 +163,19 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  sectionLabel: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 8 },
+  list: { flexGrow: 0, maxHeight: 240 },
+  lobbyRow: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  lobbyCode: { color: colors.text, fontSize: 16, fontWeight: '600', letterSpacing: 1 },
+  lobbyMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
   joinRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   input: {
     flex: 1,

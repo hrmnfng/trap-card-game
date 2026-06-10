@@ -11,7 +11,12 @@
  * `fetch` is global in React Native and Node 18+, and is injectable for tests.
  */
 
-import type { AuthResponse, DevicePlatform, User } from '@trap/shared';
+import type {
+  AuthResponse,
+  DevicePlatform,
+  LobbyHistoryItem,
+  User,
+} from '@trap/shared';
 import { config } from './config';
 
 /** Error carrying the Worker's HTTP status and machine-readable `code`. */
@@ -107,6 +112,14 @@ export class ApiClient {
 
   createLobby(): Promise<CreateLobbyResponse> {
     return this.request<CreateLobbyResponse>('/api/lobbies', { method: 'POST' }, true);
+  }
+
+  listLobbyHistory(): Promise<LobbyHistoryItem[]> {
+    return this.request<{ lobbies: LobbyHistoryItem[] }>(
+      '/api/lobbies/history',
+      { method: 'GET' },
+      true
+    ).then((r) => r.lobbies);
   }
 
   registerDevice(

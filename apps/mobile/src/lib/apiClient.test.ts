@@ -99,6 +99,35 @@ describe('ApiClient', () => {
     });
   });
 
+  it('listLobbyHistory GETs the history route and returns the lobbies array', async () => {
+    const lobbies = [
+      {
+        id: 'h1',
+        code: 'ABC123',
+        status: 'in-progress',
+        ownerId: 'u1',
+        ownerUsername: 'alice',
+        playerCount: 2,
+        createdAt: '2026-06-10T00:00:00.000Z',
+        joinedAt: '2026-06-10T00:01:00.000Z',
+      },
+    ];
+    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ lobbies }));
+    const api = new ApiClient({
+      baseUrl: 'https://api.test',
+      fetchImpl,
+      getToken: () => 'tok',
+    });
+
+    const res = await api.listLobbyHistory();
+
+    expect(res).toEqual(lobbies);
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe('https://api.test/api/lobbies/history');
+    expect((init as RequestInit).method).toBe('GET');
+    expect(headersOf(init as RequestInit)['Authorization']).toBe('Bearer tok');
+  });
+
   it('throws ApiError carrying status and code on a non-ok response', async () => {
     const fetchImpl = vi
       .fn()
