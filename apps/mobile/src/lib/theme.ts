@@ -10,3 +10,8 @@ export const colors = {
   danger: '#e53e3e',
   accent: '#48bb78',
 } as const;
+
+/** Gradient stops for the shared animated background (dark slate → indigo). */
+export const gradient = {
+  colors: ['#171e2e', '#1f2940', '#241f43', '#1a2030'] as const,
+};
