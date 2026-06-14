@@ -41,3 +41,6 @@ web-build/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Superpowers brainstorming companion
+.superpowers/
