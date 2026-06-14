@@ -6,6 +6,7 @@ import { configureStorage } from '../src/lib/storage';
 import { secureStorage } from '../src/lib/expoStorage';
 import { authStore } from '../src/state/auth';
 import { colors } from '../src/lib/theme';
+import { GradientBackground } from '../src/ui/GradientBackground';
 
 // Wire the native secure-store implementation before any store reads the
 // persisted auth token. Runs once at module load.
@@ -30,13 +31,15 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <GradientBackground />
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.surface },
+          headerStyle: { backgroundColor: 'transparent' },
+          headerTransparent: true,
           headerTintColor: colors.text,
-          contentStyle: { backgroundColor: colors.bg },
+          contentStyle: { backgroundColor: 'transparent' },
         }}
       >
         <Stack.Screen name="index" options={{ title: 'Trap Card Game' }} />
@@ -44,7 +47,7 @@ export default function RootLayout() {
         <Stack.Screen name="lobby/[code]" options={{ title: 'Lobby' }} />
         <Stack.Screen name="game/[code]" options={{ title: 'Game' }} />
       </Stack>
-    </>
+    </View>
   );
 }
 
