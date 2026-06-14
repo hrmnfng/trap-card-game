@@ -66,6 +66,7 @@ export default function GameScreen() {
         {opponents.map((p) => (
           <Pressable
             key={p.id}
+            testID="opponent"
             style={[styles.opponent, !selectedCardId && styles.opponentIdle]}
             onPress={() => playOn(p.id)}
             disabled={!selectedCardId}
@@ -82,6 +83,7 @@ export default function GameScreen() {
             return (
               <Pressable
                 key={card.id}
+                testID="hand-card"
                 style={[styles.card, selected && styles.cardSelected]}
                 onPress={() => setSelectedCardId(selected ? null : card.id)}
               >

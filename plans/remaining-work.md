@@ -96,6 +96,21 @@ Complete this matrix with two clients (e.g. web + simulator, or two devices):
 
 Expected: all rows pass. Log any failure as a bug and fix before Phase C.
 
+> **Automated A4 coverage — Playwright (2026-06-14):** rows 1–6 are now covered by
+> a browser e2e suite that drives the Expo **web** build against a live local
+> Worker (`apps/mobile/e2e/`, run with `npm run test:e2e` from `apps/mobile`).
+> `playwright.config.ts` starts/reuses `wrangler dev` (:8787, schema applied
+> first) + `expo start --web` (:8081). `auth.spec.ts` covers register +
+> logout/login; `multiplayer.spec.ts` uses two isolated browser contexts to cover
+> create/join (both see each other), non-owner-has-no-Start, owner start → 3-card
+> deal, and a played card reflected on both clients. Two web-build quirks are
+> handled in `e2e/helpers.ts` and documented in `e2e/README.md`: Expo Router keeps
+> previous screens mounted (hidden) — every locator is `.filter({ visible: true })`
+> via `vis()`; and navigations append a `?__EXPO_ROUTER_key=` query string — so
+> `waitForURL` must not `$`-anchor and route params are read from the pathname.
+> `testID`s were added to the four screens (render as `data-testid` on web).
+> Rows 7–8 (kill/reopen reconnect, durability re-fetch) remain a manual pass.
+
 > **A4 bug fixed (2026-06-10):** web login/register threw *"'fetch' called on an
 > object that does not implement interface Window."* Root cause: `apiClient.ts`
 > stored the global `fetch` on the instance (`this.fetchImpl = ... ?? fetch`) and

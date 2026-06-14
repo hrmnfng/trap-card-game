@@ -71,6 +71,7 @@ export default function LobbyScreen() {
 
       {isOwner ? (
         <Pressable
+          testID="start-game"
           style={[styles.button, !canStart && styles.buttonDisabled]}
           onPress={() => gameStore.getState().startGame()}
           disabled={!canStart}

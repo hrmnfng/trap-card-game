@@ -36,3 +36,8 @@ dist/
 # Expo
 .expo/
 web-build/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/

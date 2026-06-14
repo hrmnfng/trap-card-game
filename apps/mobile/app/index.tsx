@@ -89,6 +89,7 @@ export default function HomeScreen() {
       <Text style={styles.heading}>Welcome, {username}</Text>
 
       <Pressable
+        testID="create-lobby"
         style={[styles.button, creating && styles.buttonDisabled]}
         onPress={createLobby}
         disabled={creating}
@@ -133,12 +134,13 @@ export default function HomeScreen() {
           value={joinCode}
           onChangeText={setJoinCode}
         />
-        <Pressable style={styles.button} onPress={joinLobby}>
+        <Pressable testID="join-lobby" style={styles.button} onPress={joinLobby}>
           <Text style={styles.buttonText}>Join</Text>
         </Pressable>
       </View>
 
       <Pressable
+        testID="logout"
         style={styles.linkButton}
         onPress={() => {
           void authStore.getState().logout();

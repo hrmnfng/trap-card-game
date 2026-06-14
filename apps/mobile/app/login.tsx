@@ -63,6 +63,7 @@ export default function LoginScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Pressable
+        testID="auth-submit"
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={submit}
         disabled={loading}
@@ -77,6 +78,7 @@ export default function LoginScreen() {
       </Pressable>
 
       <Pressable
+        testID="auth-toggle"
         style={styles.linkButton}
         onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
       >
