@@ -21,13 +21,11 @@ here to help prevent future agents from having the same issue.
   Auth is username + password only (no email/recovery); opaque tokens in KV.
   `lobby_history` is written by the `LobbyDO` (on join / start / conclude) and
   read via `GET /api/lobbies/history` — it backs the Home "your lobbies" list.
-- The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) are
-  being **retired** (Phase 6 cutover). Don't add to them.
+- The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks
+  have been **removed** (Phase 6 cutover landed). The repo is now the monorepo above.
 - **Plans:** the live docs are `plans/migration-expo-cloudflare.md` (overall
   migration + status) and `plans/remaining-work.md` (executable remaining work).
-  `plans/outline.md` and `plans/implementation-plan.md` describe the **legacy**
-  FastAPI/Redis/Vue stack and are superseded — ignore them (slated for removal in
-  the Phase 6 cutover). Feature designs live under `docs/superpowers/`.
+  Feature designs live under `docs/superpowers/`.
 
 ## Code Standards
 
@@ -47,6 +45,9 @@ here to help prevent future agents from having the same issue.
   `--workspace=@trap/mobile`.
 - Mobile health (from `apps/mobile`): `npx expo-doctor`, `npx expo install --check`.
 - Worker dev (from `apps/party`): `npx wrangler dev`.
+- Browser e2e (from `apps/mobile`): `npm run test:e2e` — Playwright drives the Expo
+  **web** build against a live local Worker; the config starts/reuses `wrangler dev`
+  + `expo start --web`. See `apps/mobile/e2e/README.md`.
 
 ## Architecture Notes & Resolved Confusion Points
 
@@ -138,3 +139,16 @@ method (`this.fetchImpl(...)`), because the browser's WebIDL binding requires
 indirection (`const globalFetch: typeof fetch = (i, init) => fetch(i, init)`).
 Node/RN don't enforce this; an injected mock `fetchImpl` bypasses it, so unit
 tests need the regression test that emulates the browser `this`-guard.
+
+### Playwright e2e on the web build — two locator gotchas
+The browser e2e suite (`apps/mobile/e2e/`) drives the Expo web build, where two
+Expo-Router-on-web behaviours bite naive selectors (both handled in `e2e/helpers.ts`):
+- **Previous screens stay mounted (hidden).** A `/ → /login → /` round trip leaves
+  two Home screens in the DOM, so a locator matches 2 elements (one hidden). Wrap
+  every locator in `.filter({ visible: true })` (the `vis()` helper) to target the
+  active screen — this also makes count assertions (e.g. "three cards") correct.
+- **Navigations append `?__EXPO_ROUTER_key=`.** `waitForURL` matchers must not
+  `$`-anchor on the path, and route params (the lobby code) must be read from
+  `new URL(page.url()).pathname`, not by splitting the raw URL.
+Components get `testID`s (e.g. `create-lobby`, `hand-card`), which react-native-web
+renders as `data-testid`, so `getByTestId` works against the same native components.

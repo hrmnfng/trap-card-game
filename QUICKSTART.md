@@ -69,10 +69,13 @@ both update. The game ends when a player who has played runs out of cards.
 ```bash
 npm test                                  # shared + party + mobile
 npm run typecheck                         # + --workspace=@trap/party / @trap/mobile
+npm run test:e2e --workspace=@trap/mobile # Playwright: web build vs a live local Worker
 ```
 
 (Some `apps/party` WS/DO integration tests are `describe.skip` on Windows — see
-`AGENTS.md`. The shared, mobile, and D1/Worker tests are the reliable signal.)
+`AGENTS.md`. The shared, mobile, and D1/Worker tests are the reliable signal. The
+Playwright suite covers the two-client lobby/play flow end-to-end; it starts/reuses
+`wrangler dev` + `expo start --web` for you.)
 
 ## 3. Deploy to Cloudflare
 

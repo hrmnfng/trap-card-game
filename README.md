@@ -22,6 +22,19 @@ Auth is username + password only (PBKDF2 via Web Crypto, no email/recovery); tok
 are opaque values in KV. Push notifications use **Expo Push** (mobile only, requires
 an Expo Dev Build on device).
 
+Two design choices worth knowing up front:
+
+- **The game rules are pure and event-sourced.** `packages/shared/src/gameRules.ts`
+  keeps an append-only `events` log as the authoritative data; hands, counts, and
+  history are *derived* by replaying it. Randomness, ids, and timestamps are injected
+  via `RuleDeps`, so the rules are deterministic and unit-testable, and the *same*
+  rules run on the client and inside the Durable Object.
+- **Realtime state is per-viewer.** A client opens a WebSocket to
+  `/parties/lobby/<code>?playerId=&username=` (the PartyServer namespace is the
+  kebab-case of the DO binding `LOBBY` → `lobby`). On each change `LobbyDO` broadcasts
+  the action event (e.g. `card_played`) then a full `state_update` computed *per
+  connection*, so a player sees real card values only for their own hand.
+
 ## Game mechanics
 
 1. **Lobby**: create or join with a 6-character code (joining = connecting over the
@@ -32,6 +45,38 @@ an Expo Dev Build on device).
 4. **Reveal**: the card's value becomes public; the targeted player is notified.
 5. **End**: the game concludes the moment any player who has played a card runs out
    of cards.
+
+## Code map
+
+Where the major pieces live:
+
+**`packages/shared/src`** — the single source of truth (used by both other workspaces):
+- `types.ts` — domain types (`GameState`, `Card`, `GameEvent`, …) + `DEFAULT_GAME_SETTINGS`.
+- `messages.ts` — the WebSocket contract (`ClientMessage`/`ServerMessage` + `parseClientMessage`).
+- `gameRules.ts` — the pure, event-sourced rules engine (`addPlayer`, `startGame`,
+  `playCard`, `getGameState`, `hasGameEnded`); `testUtils.ts` supplies deterministic `RuleDeps`.
+
+**`apps/party/src`** — the Cloudflare backend:
+- `server.ts` — Worker entry: REST routes (auth, lobby create, lobby history, device
+  tokens), CORS, and WS routing to the DO.
+- `LobbyDO.ts` — the Durable Object: live game state, WS message handling, broadcasts,
+  `lobby_history` writes, and Expo push triggers.
+- `auth.ts` / `password.ts` — register/login, opaque tokens (KV), PBKDF2 hashing.
+- `history.ts` — `lobby_history` upserts. `push.ts` — Expo push. `env.ts` — typed
+  bindings. `db/schema.sql` — D1 schema (`users`, `device_tokens`, `lobby_history`).
+
+**`apps/mobile`** — the Expo client:
+- `app/` — expo-router screens: `_layout.tsx` (wires native storage, restores session),
+  `login.tsx`, `index.tsx` (Home), `lobby/[code].tsx`, `game/[code].tsx`.
+- `src/lib/` — `apiClient.ts` (REST), `realtime.ts` (partysocket WS), `config.ts`
+  (`EXPO_PUBLIC_*`), `storage.ts`/`expoStorage.ts`, `push.ts`, `theme.ts`.
+- `src/state/` — Zustand stores as injectable factories: `auth.ts`, `game.ts`, `hooks.ts`.
+  The `lib` + `state` **core is Expo-free** (native deps injected at the app entry), so
+  it unit-tests under Node. `e2e/` holds the Playwright browser tests.
+
+To change things: game rules → `packages/shared/src/gameRules.ts`; the WS contract →
+`messages.ts` (both ends); a REST endpoint → `apps/party/src/server.ts`; a screen →
+`apps/mobile/app/*` + a store in `src/state/`.
 
 ## Prerequisites
 
@@ -82,6 +127,11 @@ npm run typecheck                         # packages/shared
 npm run typecheck --workspace=@trap/party
 npm run typecheck --workspace=@trap/mobile
 ```
+
+Browser end-to-end tests (Playwright, drives the Expo **web** build against a live
+local Worker) live in `apps/mobile/e2e/` — run `npm run test:e2e` from `apps/mobile`.
+The config starts (or reuses) `wrangler dev` + `expo start --web` automatically. See
+`apps/mobile/e2e/README.md`.
 
 Mobile health checks (from `apps/mobile`): `npx expo-doctor`, `npx expo install --check`.
 
