@@ -76,12 +76,19 @@ export default function GameScreen() {
           >
             <Pressable
               testID="opponent"
-              style={[styles.opponent, !selectedCardId && styles.opponentIdle]}
+              style={[styles.opponent, selectedCardId ? styles.opponentArmed : styles.opponentIdle]}
               onPress={() => playOn(p.id)}
               disabled={!selectedCardId}
             >
-              <Text style={styles.opponentName}>{p.username}</Text>
-              <Text style={styles.subtle}>{p.cardsRemaining} cards</Text>
+              <View style={styles.opponentInfo}>
+                <Text style={styles.opponentName}>{p.username}</Text>
+                <Text style={styles.subtle}>{p.cardsRemaining} cards</Text>
+              </View>
+              <Text
+                style={[styles.opponentAction, !selectedCardId && styles.opponentActionIdle]}
+              >
+                {selectedCardId ? 'Play here ▸' : 'Select a card first'}
+              </Text>
             </Pressable>
           </MotiView>
         ))}
@@ -162,8 +169,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 2,
     borderColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  opponentIdle: { borderColor: colors.border },
+  // Dimmed + neutral border until a card is selected.
+  opponentIdle: { borderColor: colors.border, opacity: 0.55 },
+  // Lit up as a tap target once a card is armed (matches the green selected card).
+  opponentArmed: { borderColor: colors.accent },
+  opponentInfo: { flexShrink: 1 },
+  opponentAction: { color: colors.accent, fontSize: 15, fontWeight: '700' },
+  opponentActionIdle: { color: colors.muted, fontSize: 13, fontWeight: '400' },
   opponentName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   hand: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   card: {
