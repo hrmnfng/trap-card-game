@@ -11,7 +11,9 @@
     "build:shared": "npm run build --workspace=@trap/shared",
     "test": "npm run test --workspaces --if-present",
     "test:shared": "npm run test --workspace=@trap/shared",
-    "test:party": "npm run test --workspace=@trap/party"
+    "test:party": "npm run test --workspace=@trap/party",
+    "test:e2e": "npm run test:e2e --workspace=@trap/mobile",
+    "e2e:clean": "npm run e2e:clean --workspace=@trap/mobile"
   },
   "engines": {
     "node": ">=24"

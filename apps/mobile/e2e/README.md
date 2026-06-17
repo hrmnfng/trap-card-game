@@ -12,6 +12,13 @@ npm run test:e2e          # headless
 npm run test:e2e:ui       # Playwright UI mode
 ```
 
+A `pretest:e2e` hook runs `npm run e2e:clean` first (`scripts/free-e2e-ports.mjs`),
+which frees ports `8081`/`8787` so Playwright starts its **own** correctly-configured
+services. This prevents the classic failure where a **manual `npx expo start`** (built
+from `.env`'s LAN IP, not the e2e `127.0.0.1` override) gets reused and every test
+fails at login with `Failed to fetch`. Run `npm run e2e:clean` by itself any time to
+clear leftover dev servers.
+
 `playwright.config.ts` starts both services via `webServer` (and **reuses** them
 if already running, so a `wrangler dev` / `expo start --web` you already have up
 is fine):

@@ -7,6 +7,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e:clean": "node scripts/free-e2e-ports.mjs",
+    "pretest:e2e": "node scripts/free-e2e-ports.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit -p tsconfig.json",
