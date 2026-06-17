@@ -58,6 +58,39 @@ EXPO_PUBLIC_PARTY_HOST=<LAN-IP>:8787        # host:port, no scheme
 npx expo start              # press w (web), i/a (simulators), or scan for a device
 ```
 
+### On a physical device (Expo Go — no Cloudflare needed)
+
+You can run the app on your phone against the **local** Worker (Miniflare) — no
+deploy or credentials required. The phone and the dev machine must be on the
+**same Wi-Fi**.
+
+1. **Serve the Worker on your LAN.** Plain `wrangler dev` binds localhost only, so
+   a phone can't reach it — bind all interfaces instead (from `apps/party`):
+
+   ```bash
+   npx wrangler dev --ip 0.0.0.0 --port 8787
+   ```
+
+2. **Point `.env` at the dev machine's LAN IP** (not `127.0.0.1`), e.g.
+   `EXPO_PUBLIC_API_BASE_URL=http://192.168.1.31:8787`. Find the IP with `ipconfig`
+   (Windows) / `ifconfig` (macOS/Linux).
+3. **Allow the ports through the firewall.** On Windows, accept the prompt to let
+   Node/`workerd` through on a private network (otherwise the phone can't reach
+   `:8787`).
+4. **Start Expo and scan the QR:**
+
+   ```bash
+   cd apps/mobile && npx expo start
+   ```
+
+   Install **Expo Go** (App Store / Play Store). **iOS:** scan the QR with the
+   Camera app. **Android:** scan it from inside Expo Go.
+
+No code changes are required — the app reads the Worker URL from the
+`EXPO_PUBLIC_*` env. This runs the full app, including the native-only win/lose
+confetti. Remote **push notifications** are limited in Expo Go (SDK 52); they need
+a dev build (see §3).
+
 ### Try it with two clients
 
 Register a user; create a lobby on client 1; open the same code on client 2 (or tap
@@ -97,7 +130,7 @@ Smoke-test the deployed URL with the curls from step 1.
 
 Point the app at the deployed Worker for production builds:
 
-```
+```bash
 EXPO_PUBLIC_API_BASE_URL=https://trapcard-party.<sub>.workers.dev
 EXPO_PUBLIC_PARTY_HOST=trapcard-party.<sub>.workers.dev
 ```
