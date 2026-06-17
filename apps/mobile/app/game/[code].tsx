@@ -7,10 +7,12 @@ import {
   View,
 } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { AnimatePresence } from 'moti';
 import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
+import { PlayingCard } from '../../src/ui/PlayingCard';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -78,19 +80,17 @@ export default function GameScreen() {
 
         <Text style={styles.section}>Your hand</Text>
         <View style={styles.hand}>
-          {myCards.map((card: Card) => {
-            const selected = card.id === selectedCardId;
-            return (
-              <Pressable
+          <AnimatePresence>
+            {myCards.map((card: Card, i: number) => (
+              <PlayingCard
                 key={card.id}
-                testID="hand-card"
-                style={[styles.card, selected && styles.cardSelected]}
-                onPress={() => setSelectedCardId(selected ? null : card.id)}
-              >
-                <Text style={styles.cardValue}>{card.value ?? '?'}</Text>
-              </Pressable>
-            );
-          })}
+                value={card.value}
+                index={i}
+                selected={card.id === selectedCardId}
+                onPress={() => setSelectedCardId(card.id === selectedCardId ? null : card.id)}
+              />
+            ))}
+          </AnimatePresence>
           {myCards.length === 0 ? (
             <Text style={styles.subtle}>No cards left.</Text>
           ) : null}
