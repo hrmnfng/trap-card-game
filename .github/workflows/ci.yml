@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref (e.g. new pushes to a PR branch).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ESLint + markdownlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Lint TS/JS + Markdown
+        run: npm run lint
+
+  test:
+    name: Typecheck & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (shared)
+        run: npm run typecheck --workspace=@trap/shared
+      - name: Typecheck (party)
+        run: npm run typecheck --workspace=@trap/party
+      - name: Typecheck (mobile)
+        run: npm run typecheck --workspace=@trap/mobile
+      # Runs shared + party + mobile vitest suites. On Linux the party
+      # workers-pool runs clean (the Windows EBUSY teardown + 4 WS .skips noted in
+      # AGENTS.md are Windows-only).
+      - name: Unit tests
+        run: npm test
+
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      # Playwright drives the Expo web build against a live local Worker; the
+      # webServer block in playwright.config.ts starts wrangler dev + expo web.
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/mobile
+      - name: e2e
+        run: npm run test:e2e
+        working-directory: apps/mobile
+      - name: Upload Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/mobile/playwright-report
+          retention-days: 7
