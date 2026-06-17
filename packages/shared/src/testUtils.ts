@@ -16,7 +16,7 @@ export function createTestDeps(options?: {
 
   return {
     newId: () => `id-${idCounter++}`,
-    randomCardValue: (min, max) => {
+    randomCardValue: (min, _max) => {
       if (values.length > 0) {
         const v = values[valueIndex % values.length]!;
         valueIndex++;

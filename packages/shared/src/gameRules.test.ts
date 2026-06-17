@@ -67,7 +67,7 @@ describe('membership', () => {
 
   it('rejects a different player taking an existing username (case-insensitive)', () => {
     const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
+    const { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
     const res = addPlayer(state, 'p2', 'alice', deps);
     expect(res.ok).toBe(false);
     expect(res.error).toBe('username_taken');

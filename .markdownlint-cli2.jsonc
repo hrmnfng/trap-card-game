@@ -1,0 +1,19 @@
+{
+  // Markdown lint rules for the repo's own docs. See:
+  // https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+  "config": {
+    "default": true,
+    "MD013": false, // line-length — prose wrap width is not enforced
+    "MD025": false, // allow >1 H1 (tool-generated GitNexus block adds its own)
+    "MD033": false, // allow inline HTML (tables/details in docs)
+    "MD041": false, // first line need not be a top-level heading
+    "MD060": false  // table pipe spacing not enforced (GitNexus emits compact tables)
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "**/node_modules/**",
+    "**/.expo/**", // Expo-generated, git-ignored
+    ".claude/**", // installed plugin skills, not our docs
+    "docs/superpowers/**" // tool-generated plans/specs, not hand-maintained prose
+  ]
+}

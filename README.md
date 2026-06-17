@@ -51,12 +51,14 @@ Two design choices worth knowing up front:
 Where the major pieces live:
 
 **`packages/shared/src`** — the single source of truth (used by both other workspaces):
+
 - `types.ts` — domain types (`GameState`, `Card`, `GameEvent`, …) + `DEFAULT_GAME_SETTINGS`.
 - `messages.ts` — the WebSocket contract (`ClientMessage`/`ServerMessage` + `parseClientMessage`).
 - `gameRules.ts` — the pure, event-sourced rules engine (`addPlayer`, `startGame`,
   `playCard`, `getGameState`, `hasGameEnded`); `testUtils.ts` supplies deterministic `RuleDeps`.
 
 **`apps/party/src`** — the Cloudflare backend:
+
 - `server.ts` — Worker entry: REST routes (auth, lobby create, lobby history, device
   tokens), CORS, and WS routing to the DO.
 - `LobbyDO.ts` — the Durable Object: live game state, WS message handling, broadcasts,
@@ -66,6 +68,7 @@ Where the major pieces live:
   bindings. `db/schema.sql` — D1 schema (`users`, `device_tokens`, `lobby_history`).
 
 **`apps/mobile`** — the Expo client:
+
 - `app/` — expo-router screens: `_layout.tsx` (wires native storage, restores session),
   `login.tsx`, `index.tsx` (Home), `lobby/[code].tsx`, `game/[code].tsx`.
 - `src/lib/` — `apiClient.ts` (REST), `realtime.ts` (partysocket WS), `config.ts`
@@ -155,7 +158,7 @@ the mobile app with EAS (`eas build`). Full steps in `QUICKSTART.md`.
 
 ## Project structure
 
-```
+```text
 trap-card-game/
 ├── apps/
 │   ├── mobile/            # Expo client (app/ routes, src/lib, src/state)
