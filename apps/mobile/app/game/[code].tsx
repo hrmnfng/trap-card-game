@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { AnimatePresence } from 'moti';
+import { AnimatePresence, MotiView } from 'moti';
 import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
@@ -44,6 +44,7 @@ export default function GameScreen() {
 
   const opponents = gameState.players.filter((p) => p.id !== userId);
   const myCards = gameState.myCards;
+  const lastPlay = gameState.gameHistory[gameState.gameHistory.length - 1];
 
   const playOn = (targetPlayerId: string) => {
     if (!selectedCardId) return;
@@ -66,16 +67,22 @@ export default function GameScreen() {
             : 'Select a card from your hand first.'}
         </Text>
         {opponents.map((p) => (
-          <Pressable
-            key={p.id}
-            testID="opponent"
-            style={[styles.opponent, !selectedCardId && styles.opponentIdle]}
-            onPress={() => playOn(p.id)}
-            disabled={!selectedCardId}
+          <MotiView
+            key={`${p.id}-${lastPlay?.targetId === p.id ? lastPlay.id : 'idle'}`}
+            from={{ scale: lastPlay?.targetId === p.id ? 1.08 : 1 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'timing', duration: 260 }}
           >
-            <Text style={styles.opponentName}>{p.username}</Text>
-            <Text style={styles.subtle}>{p.cardsRemaining} cards</Text>
-          </Pressable>
+            <Pressable
+              testID="opponent"
+              style={[styles.opponent, !selectedCardId && styles.opponentIdle]}
+              onPress={() => playOn(p.id)}
+              disabled={!selectedCardId}
+            >
+              <Text style={styles.opponentName}>{p.username}</Text>
+              <Text style={styles.subtle}>{p.cardsRemaining} cards</Text>
+            </Pressable>
+          </MotiView>
         ))}
 
         <Text style={styles.section}>Your hand</Text>
