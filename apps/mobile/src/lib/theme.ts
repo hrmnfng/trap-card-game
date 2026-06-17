@@ -11,7 +11,7 @@ export const colors = {
   accent: '#48bb78',
 } as const;
 
-/** Gradient stops for the shared animated background (dark slate → indigo). */
+/** Gradient stops for the shared animated background (warm dusk: indigo → plum → rose). */
 export const gradient = {
-  colors: ['#171e2e', '#1f2940', '#241f43', '#1a2030'] as const,
+  colors: ['#202247', '#3e2350', '#5e2a4e', '#26243f'] as const,
 };
