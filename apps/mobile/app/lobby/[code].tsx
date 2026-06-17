@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { MotiView } from 'moti';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
+import { PressableScale } from '../../src/ui/PressableScale';
 
 const MIN_PLAYERS = 2;
 
@@ -44,7 +46,12 @@ export default function LobbyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <MotiView
+      style={styles.container}
+      from={{ opacity: 0, translateY: 8 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 260 }}
+    >
       <Text style={styles.code}>Lobby {code}</Text>
       <Text style={styles.status}>
         {connectionStatus === 'open'
@@ -70,7 +77,7 @@ export default function LobbyScreen() {
       />
 
       {isOwner ? (
-        <Pressable
+        <PressableScale
           testID="start-game"
           style={[styles.button, !canStart && styles.buttonDisabled]}
           onPress={() => gameStore.getState().startGame()}
@@ -79,7 +86,7 @@ export default function LobbyScreen() {
           <Text style={styles.buttonText}>
             {canStart ? 'Start game' : `Need ${MIN_PLAYERS}+ players`}
           </Text>
-        </Pressable>
+        </PressableScale>
       ) : (
         <Text style={styles.subtle}>Waiting for the host to start…</Text>
       )}
@@ -87,7 +94,7 @@ export default function LobbyScreen() {
       <Pressable style={styles.linkButton} onPress={leave}>
         <Text style={styles.linkText}>Leave lobby</Text>
       </Pressable>
-    </View>
+    </MotiView>
   );
 }
 

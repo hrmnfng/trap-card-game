@@ -5,14 +5,15 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { MotiView } from 'moti';
 import { authStore } from '../src/state/auth';
 import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { registerForPushNotifications } from '../src/lib/push';
 import { colors } from '../src/lib/theme';
+import { PressableScale } from '../src/ui/PressableScale';
 
 type Mode = 'login' | 'register';
 
@@ -37,7 +38,12 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <MotiView
+      style={styles.container}
+      from={{ opacity: 0, translateY: 8 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 260 }}
+    >
       <Text style={styles.heading}>
         {mode === 'login' ? 'Sign in' : 'Create an account'}
       </Text>
@@ -62,7 +68,7 @@ export default function LoginScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable
+      <PressableScale
         testID="auth-submit"
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={submit}
@@ -75,7 +81,7 @@ export default function LoginScreen() {
             {mode === 'login' ? 'Sign in' : 'Register'}
           </Text>
         )}
-      </Pressable>
+      </PressableScale>
 
       <Pressable
         testID="auth-toggle"
@@ -88,7 +94,7 @@ export default function LoginScreen() {
             : 'Already have an account? Sign in'}
         </Text>
       </Pressable>
-    </View>
+    </MotiView>
   );
 }
 

@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { MotiView } from 'moti';
 import type { LobbyHistoryItem } from '@trap/shared';
 import { authStore, selectIsAuthenticated } from '../src/state/auth';
 import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { colors } from '../src/lib/theme';
+import { PressableScale } from '../src/ui/PressableScale';
 
 export default function HomeScreen() {
   const isAuthenticated = useAuth(selectIsAuthenticated);
@@ -85,17 +87,22 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <MotiView
+      style={styles.container}
+      from={{ opacity: 0, translateY: 8 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 260 }}
+    >
       <Text style={styles.heading}>Welcome, {username}</Text>
 
-      <Pressable
+      <PressableScale
         testID="create-lobby"
         style={[styles.button, creating && styles.buttonDisabled]}
         onPress={createLobby}
         disabled={creating}
       >
         <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
-      </Pressable>
+      </PressableScale>
 
       <Text style={styles.sectionLabel}>Your lobbies</Text>
       {loadingHistory ? (
@@ -148,7 +155,7 @@ export default function HomeScreen() {
       >
         <Text style={styles.linkText}>Log out</Text>
       </Pressable>
-    </View>
+    </MotiView>
   );
 }
 
