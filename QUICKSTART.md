@@ -69,13 +69,16 @@ both update. The game ends when a player who has played runs out of cards.
 ```bash
 npm test                                  # shared + party + mobile
 npm run typecheck                         # + --workspace=@trap/party / @trap/mobile
-npm run test:e2e --workspace=@trap/mobile # Playwright: web build vs a live local Worker
+npm run test:e2e                          # Playwright: web build vs a live local Worker
+npm run e2e:clean                         # (optional) free ports 8081/8787 by hand
 ```
 
 (Some `apps/party` WS/DO integration tests are `describe.skip` on Windows — see
 `AGENTS.md`. The shared, mobile, and D1/Worker tests are the reliable signal. The
 Playwright suite covers the two-client lobby/play flow end-to-end; it starts/reuses
-`wrangler dev` + `expo start --web` for you.)
+`wrangler dev` + `expo start --web` for you. A `pretest:e2e` hook runs `e2e:clean`
+first, so it frees ports `8081`/`8787` and never reuses a mismatched server — see the
+Troubleshooting note below.)
 
 ## 3. Deploy to Cloudflare
 
@@ -115,6 +118,11 @@ After login on the device, confirm `POST /api/devices` registers a token
   Confirm `wrangler dev` is up and `EXPO_PUBLIC_API_BASE_URL` is correct.
 - **Port 8787 in use** — stop the other `wrangler dev` (Windows:
   `netstat -ano | findstr :8787`).
+- **e2e tests all fail at login with `Failed to fetch`** — you left a manual
+  `npx expo start` running, and Playwright reused it. A manual `expo start` is built
+  from `.env`'s LAN IP, not the e2e `127.0.0.1` override, so its API calls go nowhere.
+  `npm run test:e2e` now auto-clears ports `8081`/`8787` first; run `npm run e2e:clean`
+  manually if you hit this. Don't keep a hand-run `expo start` up during an e2e run.
 - **`npm audit fix --force` in `apps/party`** — don't; it swaps in a broken test-pool
   version. See `AGENTS.md`.
 
