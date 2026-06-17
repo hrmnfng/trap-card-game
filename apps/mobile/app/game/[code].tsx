@@ -13,6 +13,7 @@ import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PlayingCard } from '../../src/ui/PlayingCard';
+import { Celebration } from '../../src/ui/Celebration';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -120,12 +121,20 @@ export default function GameScreen() {
       </ScrollView>
 
       {gameEnded ? (
-        <View style={styles.endedBanner}>
-          <Text style={styles.endedText}>Game over</Text>
-          <Pressable style={styles.button} onPress={leave}>
-            <Text style={styles.buttonText}>Back to home</Text>
-          </Pressable>
-        </View>
+        <>
+          <Celebration />
+          <MotiView
+            style={styles.endedBanner}
+            from={{ opacity: 0, translateY: 24 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 320 }}
+          >
+            <Text style={styles.endedText}>Game over</Text>
+            <Pressable style={styles.button} onPress={leave}>
+              <Text style={styles.buttonText}>Back to home</Text>
+            </Pressable>
+          </MotiView>
+        </>
       ) : (
         <Pressable style={styles.linkButton} onPress={leave}>
           <Text style={styles.linkText}>Leave game</Text>
