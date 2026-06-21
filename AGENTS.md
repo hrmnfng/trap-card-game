@@ -123,15 +123,19 @@ toolchain ships a workerd that handles in-test WS upgrades on this platform.
 
 ### Test pool: isolated-storage / EBUSY failures (Windows)
 
-Same pinned pool, separate failure mode from the WS segfault. Symptom:
-`Failed to pop isolated storage stack frame` / `Isolated storage failed`, with an
+Separate failure mode from the WS segfault. Symptom:
+`Failed to pop isolated storage stack frame` / `Isolated storage failed`
+(`AssertionError: Expected .sqlite, got ...sqlite-shm`), with an
 `EBUSY: ... unlink ...\Temp\miniflare-...\do\...LobbyDO\....sqlite` in the logs
-above it (Windows releases the DO SQLite handle too late for the post-test
-cleanup). Two known triggers:
+above it on Windows. The pool can't pop a test's storage frame while the DO's
+SQLite WAL (`.sqlite-shm`) is still open. **On pool 0.12.x this is a hard error
+that fails the whole suite on Linux CI too** (not just Windows EBUSY). Triggers:
 
-- A test that **resolves the same Durable Object twice** in one test (e.g.
-  `getServerByName` in a helper *and* again to read state back) — flaky here.
-  `lobby.integration.test.ts`'s "persists created lobby state…" test hits this.
+- A test that **reads DO storage back after writing it** in the same test —
+  `getServerByName` in a helper to create, then resolving the DO again to read
+  `/state`. `lobby.integration.test.ts`'s "persists created lobby state…" test
+  hits this and is **`it.skip`ped** on the 0.12.x pool (its coverage lives in the
+  create test, `history.integration.test.ts`, and the Playwright e2e).
 - Adding a **UNIQUE index** on `lobby_history` to the test D1 in
   `test/setup.ts` — reproducibly trips it (prod `schema.sql` keeps the index;
   the test schema deliberately omits it).
