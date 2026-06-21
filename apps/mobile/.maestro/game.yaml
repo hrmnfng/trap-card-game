@@ -12,7 +12,8 @@ appId: host.exp.exponent
 - extendedWaitUntil:
     visible: "Sign in / Register"
     timeout: 120000
-- tapOn: "Sign in / Register"
+- tapOn:
+    id: "signin-cta"
 - extendedWaitUntil:
     visible:
       id: "auth-submit"
