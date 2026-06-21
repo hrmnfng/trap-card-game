@@ -52,6 +52,10 @@ here to help prevent future agents from having the same issue.
 - Browser e2e (from `apps/mobile`): `npm run test:e2e` — Playwright drives the Expo
   **web** build against a live local Worker; the config starts/reuses `wrangler dev`
   - `expo start --web`. See `apps/mobile/e2e/README.md`.
+- On-device (Android, Hermes): `.github/workflows/device.yml` runs Maestro flows
+  (`apps/mobile/.maestro/`) against Expo Go on an emulator, with a Node player-2
+  helper (`apps/mobile/maestro/player2.mjs`). This is the only layer that catches
+  Hermes-only gaps (native modules, missing web globals) — see `apps/mobile/maestro/README.md`.
 
 ## Architecture Notes & Resolved Confusion Points
 
