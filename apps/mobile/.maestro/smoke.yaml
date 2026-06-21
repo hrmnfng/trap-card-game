@@ -1,5 +1,7 @@
-# Boot smoke: load the project in Expo Go and assert the login screen renders.
-# Catches boot-time Hermes crashes (Reanimated native init, missing EventTarget).
+# Boot smoke: load the project in Expo Go and assert the home screen renders.
+# The app boots to the unauthenticated home ("Sign in / Register"); reaching it
+# proves the JS bundle ran on Hermes (catches Reanimated native init / missing
+# EventTarget crashes, which would prevent any render).
 appId: host.exp.exponent
 ---
 - launchApp:
@@ -8,6 +10,5 @@ appId: host.exp.exponent
 # extendedWaitUntil (not assertVisible) is how Maestro waits up to a timeout; the
 # first Expo Go bundle load is slow, so allow a generous window.
 - extendedWaitUntil:
-    visible:
-      id: "auth-submit"
+    visible: "Sign in / Register"
     timeout: 120000

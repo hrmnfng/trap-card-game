@@ -8,10 +8,15 @@ appId: host.exp.exponent
 - launchApp:
     clearState: true
 - openLink: exp://10.0.2.2:8081
+# App boots to the unauthenticated home; tap through to the login screen.
+- extendedWaitUntil:
+    visible: "Sign in / Register"
+    timeout: 120000
+- tapOn: "Sign in / Register"
 - extendedWaitUntil:
     visible:
       id: "auth-submit"
-    timeout: 120000
+    timeout: 30000
 # Switch to "register" and create player 1.
 - tapOn:
     id: "auth-toggle"
@@ -21,6 +26,7 @@ appId: host.exp.exponent
 - inputText: "password1"
 - tapOn:
     id: "auth-submit"
+# On success the app returns to the (now authenticated) home screen.
 - extendedWaitUntil:
     visible: "Welcome, ${P1_USER}"
     timeout: 30000
