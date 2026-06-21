@@ -86,6 +86,19 @@ npm's "fix" is a downgrade). A root `overrides` for `postcss` does **not** take
 `^7` pin risks breaking iOS prebuild — neither is worth it for build-time-only
 advisories. Revisit the Expo cluster at the next SDK upgrade.
 
+### Account recovery (operator password reset)
+
+No self-service recovery. To reset a forgotten password, an operator runs (from
+`apps/party`):
+
+    npm run reset-password -- <username> <newPassword> [--remote]
+
+It reuses the Worker's PBKDF2 `hashPassword` and applies an `UPDATE users …` via
+`wrangler d1 execute` — local Miniflare by default, `--remote` for production D1.
+`--remote` uses your existing `wrangler login` session (or a scoped
+`CLOUDFLARE_API_TOKEN` for non-interactive/CI use); there is no separate DB secret.
+`--remote` needs the real `database_id` in `wrangler.toml` (set at deploy time).
+
 ### Game rules are pure and deterministic
 
 `packages/shared/src/gameRules.ts` is framework-agnostic and side-effect free.
