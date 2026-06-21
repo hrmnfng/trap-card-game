@@ -56,6 +56,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Build shared package
+        run: npm run build --workspace=@trap/shared
       # Playwright drives the Expo web build against a live local Worker; the
       # webServer block in playwright.config.ts starts wrangler dev + expo web.
       - name: Install Playwright (chromium)

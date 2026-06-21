@@ -11,6 +11,7 @@ full command reference see `README.md`; for conventions and gotchas see `AGENTS.
 
 ```bash
 npm install            # from the repo root; installs all workspaces
+npm run build:shared   # build packages/shared (dist/ required by the Worker bundler)
 ```
 
 ## 1. Run it locally
@@ -100,10 +101,12 @@ both update. The game ends when a player who has played runs out of cards.
 ## 2. Verify
 
 ```bash
-npm test                                  # shared + party + mobile
-npm run typecheck                         # + --workspace=@trap/party / @trap/mobile
-npm run test:e2e                          # Playwright: web build vs a live local Worker
-npm run e2e:clean                         # (optional) free ports 8081/8787 by hand
+npm test                                                  # shared + party + mobile
+npm run typecheck --workspace=@trap/shared                # typecheck each workspace
+npm run typecheck --workspace=@trap/party
+npm run typecheck --workspace=@trap/mobile
+npm run test:e2e                                          # Playwright: web build vs a live local Worker
+npm run e2e:clean                                         # (optional) free ports 8081/8787 by hand
 ```
 
 (Some `apps/party` WS/DO integration tests are `describe.skip` on Windows — see
