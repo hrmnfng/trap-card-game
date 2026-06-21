@@ -23,3 +23,24 @@ Thumbs.db
 # Firebase
 *-firebase-adminsdk-*.json
 firebase-credentials.json
+
+# Node / workspaces
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Expo
+.expo/
+web-build/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Superpowers brainstorming companion
+.superpowers/

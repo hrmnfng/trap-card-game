@@ -1,0 +1,31 @@
+{
+  "name": "trap-card-game",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trap Card Game - Expo + Cloudflare PartyServer multiplayer card game",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace=@trap/shared",
+    "test": "npm run test --workspaces --if-present",
+    "test:shared": "npm run test --workspace=@trap/shared",
+    "test:party": "npm run test --workspace=@trap/party",
+    "test:e2e": "npm run test:e2e --workspace=@trap/mobile",
+    "e2e:clean": "npm run e2e:clean --workspace=@trap/mobile",
+    "lint": "npm run lint:js && npm run lint:md",
+    "lint:js": "eslint .",
+    "lint:md": "markdownlint-cli2"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "markdownlint-cli2": "^0.22.1",
+    "typescript-eslint": "^8.61.1"
+  }
+}
