@@ -5,6 +5,9 @@ appId: host.exp.exponent
 - launchApp:
     clearState: true
 - openLink: exp://10.0.2.2:8081
-- assertVisible:
-    id: "auth-submit"
+# extendedWaitUntil (not assertVisible) is how Maestro waits up to a timeout; the
+# first Expo Go bundle load is slow, so allow a generous window.
+- extendedWaitUntil:
+    visible:
+      id: "auth-submit"
     timeout: 120000
