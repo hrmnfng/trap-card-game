@@ -12,8 +12,19 @@ appId: host.exp.exponent
 - extendedWaitUntil:
     visible: "Sign in / Register"
     timeout: 120000
+- waitForAnimationToEnd
 - tapOn:
     id: "signin-cta"
+# The first tap occasionally races the initial render and doesn't navigate;
+# re-tap (optional, so it's a harmless no-op once the login screen is showing).
+- runFlow:
+    when:
+      notVisible:
+        id: "auth-submit"
+    commands:
+      - tapOn:
+          id: "signin-cta"
+          optional: true
 - extendedWaitUntil:
     visible:
       id: "auth-submit"
