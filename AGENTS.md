@@ -185,6 +185,13 @@ Two non-obvious constraints from the SDK 52 → 54 upgrade:
   from `apps/mobile`) can't find it — the web bundle then 500s with
   `Cannot find module 'babel-preset-expo'`. Listing it directly hoists it to the
   root `node_modules` where it resolves.
+- **`partysocket` needs the `EventTarget`/`Event` web globals**, which Hermes
+  (React Native) lacks — Expo Go crashes at load with
+  `PartySocket requires a global 'EventTarget' class` / `Property 'Event' doesn't
+  exist`. `src/lib/realtime.ts` (the sole partysocket importer) imports
+  `partysocket/event-target-polyfill` **before** `partysocket`; the polyfill is a
+  no-op where the globals exist (browser web build, Node/vitest), so the e2e and
+  unit tests don't catch the gap — only a device/Hermes run does.
 
 ### Regenerate `package-lock.json` with a clean full install (cross-platform)
 
