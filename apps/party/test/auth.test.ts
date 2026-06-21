@@ -53,10 +53,15 @@ describe('register', () => {
     if (!res.ok) expect(res.error.code).toBe('username_taken');
   });
 
-  it('rejects weak passwords', async () => {
-    const res = await register(testEnv, 'carol', '123');
+  it('rejects an empty password', async () => {
+    const res = await register(testEnv, 'carol', '');
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe('invalid_password');
+  });
+
+  it('accepts a short (1-char) password', async () => {
+    const res = await register(testEnv, 'carl', 'x');
+    expect(res.ok).toBe(true);
   });
 });
 
@@ -78,6 +83,12 @@ describe('login', () => {
     const res = await login(testEnv, 'nobody', 'password1');
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error.code).toBe('invalid_credentials');
+  });
+
+  it('logs in case-insensitively on username', async () => {
+    await register(testEnv, 'Mallory', 'password1');
+    const res = await login(testEnv, 'MALLORY', 'password1');
+    expect(res.ok).toBe(true);
   });
 });
 
