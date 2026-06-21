@@ -9,7 +9,7 @@ build exists for testing.
 
 An npm-workspace monorepo on TypeScript (Node 24):
 
-- **`apps/mobile`** — Expo (React Native + react-native-web), Expo SDK 52. The
+- **`apps/mobile`** — Expo (React Native + react-native-web), Expo SDK 54. The
   client: expo-router screens, Zustand stores, a `partysocket` realtime client.
 - **`apps/party`** — Cloudflare Worker + a PartyServer Durable Object (`LobbyDO`,
   one per lobby) holding live game state in DO SQLite. Backed by **D1** (accounts,
