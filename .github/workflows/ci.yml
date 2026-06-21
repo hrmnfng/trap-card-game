@@ -34,6 +34,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Build shared package
+        run: npm run build --workspace=@trap/shared
       - name: Typecheck (shared)
         run: npm run typecheck --workspace=@trap/shared
       - name: Typecheck (party)
