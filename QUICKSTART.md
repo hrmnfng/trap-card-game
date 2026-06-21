@@ -89,7 +89,7 @@ deploy or credentials required. The phone and the dev machine must be on the
 
 No code changes are required — the app reads the Worker URL from the
 `EXPO_PUBLIC_*` env. This runs the full app, including the native-only win/lose
-confetti. Remote **push notifications** are limited in Expo Go (SDK 52); they need
+confetti. Remote **push notifications** are limited in Expo Go (SDK 54); they need
 a dev build (see §3).
 
 ### Try it with two clients

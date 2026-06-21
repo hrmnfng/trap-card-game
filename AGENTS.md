@@ -10,7 +10,7 @@ here to help prevent future agents from having the same issue.
 - This is a greenfield project and it's okay to make drastic changes.
 - TypeScript (Node v24) across an **npm-workspace monorepo**:
   - `apps/mobile` — Expo (React Native + react-native-web). **Mobile is the
-    product; web is test-only.** Expo SDK 52.
+    product; web is test-only.** Expo SDK 54.
   - `apps/party` — Cloudflare Worker + PartyServer Durable Object. One
     `LobbyDO` per lobby code holds live game state in DO SQLite storage.
     Replaces FastAPI WebSockets + Redis pub/sub.
@@ -143,6 +143,26 @@ implementations live in `src/lib/expoStorage.ts` and `src/lib/push.ts` and are
 wired only at the app entry (`app/_layout.tsx`). Mobile uses **extensionless**
 relative imports (for Metro), unlike `packages/shared` / `apps/party` which use
 `.js` extensions.
+
+### Expo SDK 54: Reanimated pinned to v3, explicit `babel-preset-expo`
+
+Two non-obvious constraints from the SDK 52 → 54 upgrade:
+
+- **`react-native-reanimated` is intentionally pinned to `~3.19.5`**, not SDK 54's
+  bundled `~4.1.1`. `moti` (used for `MotiView`/`AnimatePresence` across the UI)
+  still depends on Reanimated 3; Reanimated 4 also requires `react-native-worklets`
+  and drops the Legacy Architecture. The pin is recorded in `expo.install.exclude`
+  in `apps/mobile/package.json`, so `expo install --fix` / `expo-doctor` won't try
+  to bump it. New Architecture is on (`newArchEnabled: true`), which Reanimated 3
+  still supports. If `moti` ships Reanimated 4 support, drop the pin + exclude and
+  add `react-native-worklets` (and switch the babel plugin to
+  `react-native-worklets/plugin`).
+- **`babel-preset-expo` is an explicit `devDependency`.** In this workspace npm
+  nests it under `node_modules/expo/node_modules`, where Metro/Babel (resolving
+  from `apps/mobile`) can't find it — the web bundle then 500s with
+  `Cannot find module 'babel-preset-expo'`. Listing it directly hoists it to the
+  root `node_modules` where it resolves. `babel.config.js` still uses
+  `react-native-reanimated/plugin` (correct for Reanimated 3).
 
 ### Call the global `fetch` as a free function (web)
 

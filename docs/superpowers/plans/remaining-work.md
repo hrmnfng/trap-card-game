@@ -11,7 +11,7 @@ end-to-end, deployed, and with the legacy Vue/FastAPI stack removed."
 (`LobbyDO`) over WebSocket, with D1 (accounts/devices/history) + KV (tokens). Shared
 types/rules in `@trap/shared`.
 
-**Tech Stack:** TypeScript, npm workspaces, Expo SDK 52, PartyServer, Cloudflare
+**Tech Stack:** TypeScript, npm workspaces, Expo SDK 54, PartyServer, Cloudflare
 Workers/D1/KV, Wrangler, Vitest.
 
 ---
