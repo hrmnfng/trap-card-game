@@ -13,11 +13,12 @@
  *  - client messages use the camelCase `@trap/shared` contract.
  */
 
-// Hermes (React Native) lacks the EventTarget/Event/ErrorEvent web globals that
-// partysocket needs at module load; this conditional polyfill installs them and
-// is a no-op where they already exist (browser/web build, Node/vitest). MUST be
-// imported before partysocket. realtime.ts is the sole partysocket importer.
-import 'partysocket/event-target-polyfill';
+// Hermes (React Native) lacks the EventTarget/Event/MessageEvent web globals that
+// partysocket needs at module load and at message time; these conditional
+// polyfills install them and are no-ops where they already exist (browser/web
+// build, Node/vitest). MUST be imported before partysocket. realtime.ts is the
+// sole partysocket importer.
+import './partysocketPolyfills';
 import PartySocket from 'partysocket';
 import type { ClientMessage, ServerMessage } from '@trap/shared';
 import { config } from './config';

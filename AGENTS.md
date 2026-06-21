@@ -52,6 +52,10 @@ here to help prevent future agents from having the same issue.
 - Browser e2e (from `apps/mobile`): `npm run test:e2e` — Playwright drives the Expo
   **web** build against a live local Worker; the config starts/reuses `wrangler dev`
   - `expo start --web`. See `apps/mobile/e2e/README.md`.
+- On-device (Android, Hermes): `.github/workflows/device.yml` runs Maestro flows
+  (`apps/mobile/.maestro/`) against Expo Go on an emulator, with a Node player-2
+  helper (`apps/mobile/maestro/player2.mjs`). This is the only layer that catches
+  Hermes-only gaps (native modules, missing web globals) — see `apps/mobile/maestro/README.md`.
 
 ## Architecture Notes & Resolved Confusion Points
 
@@ -185,13 +189,17 @@ Two non-obvious constraints from the SDK 52 → 54 upgrade:
   from `apps/mobile`) can't find it — the web bundle then 500s with
   `Cannot find module 'babel-preset-expo'`. Listing it directly hoists it to the
   root `node_modules` where it resolves.
-- **`partysocket` needs the `EventTarget`/`Event` web globals**, which Hermes
-  (React Native) lacks — Expo Go crashes at load with
-  `PartySocket requires a global 'EventTarget' class` / `Property 'Event' doesn't
-  exist`. `src/lib/realtime.ts` (the sole partysocket importer) imports
-  `partysocket/event-target-polyfill` **before** `partysocket`; the polyfill is a
-  no-op where the globals exist (browser web build, Node/vitest), so the e2e and
-  unit tests don't catch the gap — only a device/Hermes run does.
+- **`partysocket` needs the `EventTarget`/`Event`/`MessageEvent` web globals**,
+  which Hermes (React Native) lacks. Missing `EventTarget`/`Event` crashes at load
+  (`PartySocket requires a global 'EventTarget' class` / `Property 'Event' doesn't
+  exist`); missing `MessageEvent` crashes on the first WS message
+  (`Property 'MessageEvent' doesn't exist`), so the lobby/game silently never
+  update. `src/lib/partysocketPolyfills.ts` imports `partysocket/event-target-polyfill`
+  (Event/EventTarget) then defines a minimal `MessageEvent`; `src/lib/realtime.ts`
+  (the sole partysocket importer) imports it **before** `partysocket`. All
+  conditional/no-op where the globals exist (browser web build, Node/vitest), so
+  the e2e and unit tests don't catch these — only a device/Hermes run does (the
+  `device.yml` gate).
 - **`partysocket` also needs a global `crypto`** at *connect* time
   (`crypto.randomUUID()` for the connection id). Hermes has no `crypto` global, so
   the bare reference throws `Property 'crypto' doesn't exist` when entering a

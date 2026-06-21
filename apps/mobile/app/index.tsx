@@ -58,7 +58,11 @@ export default function HomeScreen() {
       <View style={styles.container}>
         <Text style={styles.heading}>Trap Card Game</Text>
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
-        <Pressable style={styles.button} onPress={() => router.push('/login')}>
+        <Pressable
+          testID="signin-cta"
+          style={styles.button}
+          onPress={() => router.push('/login')}
+        >
           <Text style={styles.buttonText}>Sign in / Register</Text>
         </Pressable>
       </View>
