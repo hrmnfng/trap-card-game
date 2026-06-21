@@ -1,0 +1,111 @@
+name: Device (Android)
+
+run-name: >-
+  Device · ${{ github.event_name }} · ${{ github.head_ref || github.ref_name }}${{ github.event.pull_request.number && format(' (PR #{0})', github.event.pull_request.number) || '' }} · @${{ github.actor }}
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/shared/**'
+      - 'package-lock.json'
+      - '.github/workflows/device.yml'
+  schedule:
+    - cron: '0 9 * * *' # nightly ~09:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: device-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Maestro (Expo Go, Android emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      EXPO_PUBLIC_API_BASE_URL: http://10.0.2.2:8787
+      EXPO_PUBLIC_PARTY_HOST: 10.0.2.2:8787
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Build shared package
+        run: npm run build --workspace=@trap/shared
+
+      - name: Enable KVM (hardware accel for the emulator)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Start Worker (binds 0.0.0.0 for the emulator)
+        working-directory: apps/party
+        run: |
+          npm run db:apply:local
+          nohup npx wrangler dev --ip 0.0.0.0 --port 8787 > /tmp/worker.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8787 && break || sleep 2
+          done
+
+      - name: Start Metro (Expo dev server)
+        working-directory: apps/mobile
+        run: |
+          nohup npx expo start > /tmp/metro.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8081 && break || sleep 2
+          done
+
+      - name: Start player-2 helper and capture LOBBY_CODE
+        working-directory: apps/mobile
+        env:
+          PLAYER2_API_BASE: http://127.0.0.1:8787
+          PLAYER2_PARTY_HOST: 127.0.0.1:8787
+        run: |
+          nohup node maestro/player2.mjs > /tmp/player2.log 2>&1 &
+          CODE=""
+          for i in $(seq 1 30); do
+            CODE=$(grep -oE 'LOBBY_CODE=[A-Z0-9]+' /tmp/player2.log | head -1 | cut -d= -f2)
+            [ -n "$CODE" ] && break || sleep 1
+          done
+          test -n "$CODE" || { echo "no LOBBY_CODE"; cat /tmp/player2.log; exit 1; }
+          echo "LOBBY_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "P1_USER=p1_${{ github.run_id }}_${{ github.run_attempt }}" >> "$GITHUB_ENV"
+
+      - name: Run Maestro on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            URL=$(curl -fsSL https://api.expo.dev/v2/versions \
+              | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const v=JSON.parse(d).data;const s=v.sdkVersions&&v.sdkVersions['54.0.0'];console.log((s&&(s.androidClientUrl||s.androidClientUri))||v.androidUrl)})")
+            echo "Expo Go APK: $URL"
+            curl -fsSL "$URL" -o /tmp/expo-go.apk
+            adb install -r /tmp/expo-go.apk
+            maestro test \
+              -e LOBBY_CODE="${LOBBY_CODE}" \
+              -e P1_USER="${P1_USER}" \
+              apps/mobile/.maestro
+
+      - name: Upload Maestro artifacts on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-output
+          path: |
+            ~/.maestro/tests
+            /tmp/worker.log
+            /tmp/metro.log
+            /tmp/player2.log
+          retention-days: 7
