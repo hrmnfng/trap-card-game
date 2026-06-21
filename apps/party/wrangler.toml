@@ -3,6 +3,14 @@ main = "src/server.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Local `wrangler dev` server. Bind all interfaces so the Worker is reachable at
+# this machine's LAN IP — both from a physical device on the same Wi-Fi (Expo Go)
+# and from this machine's browser when apps/mobile/.env points EXPO_PUBLIC_* at
+# the LAN IP. (The Playwright e2e overrides this with `--ip 127.0.0.1`.)
+[dev]
+ip = "0.0.0.0"
+port = 8787
+
 # Durable Object: one instance per lobby code.
 [[durable_objects.bindings]]
 name = "LOBBY"
