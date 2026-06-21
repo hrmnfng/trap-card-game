@@ -6,12 +6,16 @@ on Hermes. Driven in CI by `.github/workflows/device.yml`.
 
 ## Pieces
 
-- `.maestro/smoke.yaml` — boots the app in Expo Go; asserts the login screen.
+- `.maestro/smoke.yaml` — boots the app in Expo Go; asserts the home screen
+  renders (proves the JS ran on Hermes).
 - `.maestro/game.yaml` — registers player 1, joins the lobby created by the
   helper, waits for game start, plays a card.
 - `maestro/player2.mjs` — Node helper that acts as player 2 (owner): registers,
   creates the lobby, prints `LOBBY_CODE=<code>`, starts the game once the device
   joins, and stays connected.
+- `maestro/ci-device-run.sh` — runs inside the emulator step: installs Expo Go
+  (SDK 54) on the booted emulator, then runs the flows. (Kept as a script because
+  the emulator-runner action executes its `script:` via dash.)
 
 ## Run locally (with an emulator/device on `adb`)
 
