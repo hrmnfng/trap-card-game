@@ -1,3 +1,6 @@
+// Polyfill the global `crypto` for Hermes before anything opens a partysocket
+// connection. Must come first. No-op on web/Node where `crypto` already exists.
+import '../src/lib/cryptoPolyfill';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';

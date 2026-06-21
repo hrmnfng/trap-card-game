@@ -192,6 +192,15 @@ Two non-obvious constraints from the SDK 52 → 54 upgrade:
   `partysocket/event-target-polyfill` **before** `partysocket`; the polyfill is a
   no-op where the globals exist (browser web build, Node/vitest), so the e2e and
   unit tests don't catch the gap — only a device/Hermes run does.
+- **`partysocket` also needs a global `crypto`** at *connect* time
+  (`crypto.randomUUID()` for the connection id). Hermes has no `crypto` global, so
+  the bare reference throws `Property 'crypto' doesn't exist` when entering a
+  game/lobby (optional chaining doesn't guard an undeclared identifier).
+  `src/lib/cryptoPolyfill.ts` installs `globalThis.crypto` from **`expo-crypto`**
+  (bundled in Expo Go; works on web) and is imported **first** in
+  `app/_layout.tsx`. It is conditional (no-op where `crypto` exists) and lives
+  *outside* the Expo-free `src/lib` test surface since it imports `expo-crypto`.
+  Same web/Node-pass-but-Hermes-fail blind spot as the EventTarget gap above.
 
 ### Regenerate `package-lock.json` with a clean full install (cross-platform)
 
