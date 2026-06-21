@@ -87,16 +87,7 @@ jobs:
           api-level: 34
           arch: x86_64
           profile: pixel_6
-          script: |
-            URL=$(curl -fsSL https://api.expo.dev/v2/versions \
-              | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const v=JSON.parse(d).data;const s=v.sdkVersions&&v.sdkVersions['54.0.0'];console.log((s&&(s.androidClientUrl||s.androidClientUri))||v.androidUrl)})")
-            echo "Expo Go APK: $URL"
-            curl -fsSL "$URL" -o /tmp/expo-go.apk
-            adb install -r /tmp/expo-go.apk
-            maestro test \
-              -e LOBBY_CODE="${LOBBY_CODE}" \
-              -e P1_USER="${P1_USER}" \
-              apps/mobile/.maestro
+          script: bash apps/mobile/maestro/ci-device-run.sh
 
       - name: Upload Maestro artifacts on failure
         if: ${{ failure() }}
