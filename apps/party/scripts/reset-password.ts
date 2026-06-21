@@ -10,12 +10,23 @@
  */
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { hashPassword } from '../src/password.ts';
 import { parseResetArgs, buildUpdateSql } from './reset-password.lib.ts';
 
 const DB_NAME = 'trapcard';
+
+/**
+ * Absolute path to wrangler's JS entry. We run it with `node` directly rather
+ * than via `npx`/a shell: a shell-out (`shell: true`) concatenates args unescaped
+ * (DEP0190) and breaks on temp paths with spaces, and `npx` on Windows is a
+ * `.cmd` that won't spawn without a shell. `bin/wrangler.js` isn't an exported
+ * subpath, so we resolve the package's `package.json` and derive it.
+ */
+const require = createRequire(import.meta.url);
+const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 
 async function main(): Promise<void> {
   let args;
@@ -35,9 +46,9 @@ async function main(): Promise<void> {
 
   try {
     const res = spawnSync(
-      'npx',
-      ['wrangler', 'd1', 'execute', DB_NAME, target, '--file', file],
-      { stdio: 'inherit', shell: process.platform === 'win32' }
+      process.execPath,
+      [WRANGLER_BIN, 'd1', 'execute', DB_NAME, target, '--file', file],
+      { stdio: 'inherit' }
     );
     if (res.status !== 0) process.exit(res.status ?? 1);
   } finally {
