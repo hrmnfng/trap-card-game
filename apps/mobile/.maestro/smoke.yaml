@@ -1,0 +1,10 @@
+# Boot smoke: load the project in Expo Go and assert the login screen renders.
+# Catches boot-time Hermes crashes (Reanimated native init, missing EventTarget).
+appId: host.exp.exponent
+---
+- launchApp:
+    clearState: true
+- openLink: exp://10.0.2.2:8081
+- assertVisible:
+    id: "auth-submit"
+    timeout: 120000

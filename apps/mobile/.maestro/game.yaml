@@ -1,0 +1,43 @@
+# Full flow: register player 1 on the device, join the lobby created by the
+# player-2 helper, wait for the helper to start the game, then play a card.
+# Catches the WS-connect / game-entry crash (missing crypto global on Hermes).
+# Env: LOBBY_CODE (from the helper), P1_USER (unique per run, from the workflow).
+appId: host.exp.exponent
+---
+- launchApp:
+    clearState: true
+- openLink: exp://10.0.2.2:8081
+- assertVisible:
+    id: "auth-submit"
+    timeout: 120000
+# Switch to "register" and create player 1.
+- tapOn:
+    id: "auth-toggle"
+- tapOn: "Username"
+- inputText: ${P1_USER}
+- tapOn: "Password"
+- inputText: "password1"
+- tapOn:
+    id: "auth-submit"
+- assertVisible: "Welcome, ${P1_USER}"
+# Join the helper's lobby by code.
+- tapOn: "Lobby code"
+- inputText: ${LOBBY_CODE}
+- tapOn:
+    id: "join-lobby"
+# The helper (owner) starts the game once it sees the device join; the app
+# navigates to the game screen and deals a hand. Reaching here exercises the
+# game-entry WS connect that previously crashed on Hermes.
+- assertVisible:
+    id: "hand-card"
+    timeout: 60000
+# Play a card on the opponent and confirm the play registers.
+- tapOn:
+    id: "hand-card"
+    index: 0
+- tapOn:
+    id: "opponent"
+    index: 0
+- assertVisible:
+    text: "${P1_USER} played.*"
+    timeout: 20000
