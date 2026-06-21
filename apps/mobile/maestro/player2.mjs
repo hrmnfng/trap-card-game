@@ -36,8 +36,10 @@ async function main() {
     query: { playerId: userId, username },
   });
 
+  let connected = false;
   let started = false;
   socket.addEventListener('open', () => {
+    connected = true;
     socket.send(JSON.stringify({ type: 'get_state' }));
   });
   socket.addEventListener('message', (ev) => {
@@ -56,6 +58,17 @@ async function main() {
       }
     }
   });
+  socket.addEventListener('error', (ev) => {
+    console.error('player2: socket error', ev?.message ?? ev);
+    process.exit(1);
+  });
+
+  setTimeout(() => {
+    if (!connected) {
+      console.error('player2: timed out waiting for WebSocket to open');
+      process.exit(1);
+    }
+  }, 30000).unref?.();
 
   // Keep the process (and the WS) alive until the workflow kills it.
   setInterval(() => {}, 1 << 30);
