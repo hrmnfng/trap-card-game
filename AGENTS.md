@@ -182,6 +182,18 @@ Two non-obvious constraints from the SDK 52 → 54 upgrade:
   `Cannot find module 'babel-preset-expo'`. Listing it directly hoists it to the
   root `node_modules` where it resolves.
 
+### Regenerate `package-lock.json` with a clean full install (cross-platform)
+
+`vitest` pulls in `rollup`, which has per-platform optional binaries. npm's
+optional-dep bug ([npm/cli#4828](https://github.com/npm/cli/issues/4828)) means an
+**incremental** `npm install` (or repeated `rm package-lock.json && npm install`)
+on Windows prunes the lockfile's `@rollup/rollup-*` entries down to just `win32`.
+CI (Linux `npm ci`) then dies with `Cannot find module @rollup/rollup-linux-x64-gnu`.
+Fix: regenerate with a **clean full install** — `rm -rf node_modules **/node_modules
+package-lock.json && npm install` — which writes all ~25 platform entries. Verify
+`@rollup/rollup-linux-x64-gnu` is in the lockfile before committing. (Same applies
+to other native optional deps; the clean install is the reliable path.)
+
 ### Call the global `fetch` as a free function (web)
 
 The web build throws `'fetch' called on an object that does not implement
