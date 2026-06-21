@@ -15,9 +15,9 @@ URL="$(curl -fsSL https://api.expo.dev/v2/versions | node -e '
   let d = "";
   process.stdin.on("data", (c) => (d += c));
   process.stdin.on("end", () => {
-    const v = JSON.parse(d).data;
+    const v = JSON.parse(d);
     const s = v.sdkVersions && v.sdkVersions["54.0.0"];
-    console.log((s && (s.androidClientUrl || s.androidClientUri)) || v.androidUrl || "");
+    console.log((s && s.androidClientUrl) || v.androidClientUrl || v.androidUrl || "");
   });
 ')"
 
