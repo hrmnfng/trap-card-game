@@ -57,14 +57,30 @@ here to help prevent future agents from having the same issue.
 
 ### Workers test pool & dev-only audit advisories
 
-`apps/party` is pinned to `@cloudflare/vitest-pool-workers@0.8.19` + `vitest@3.1.4`.
-The newer pool (0.16.x) is audit-clean but its `/config` export does not resolve
-under the current Vite, so it cannot be used yet. The 0.8.19 line carries
-transitive advisories (vite/esbuild/undici/ws/devalue, and the vitest UI server
-CVE) — ALL are in the test runner / dev tooling and are NEVER bundled into the
-deployed Worker (`wrangler deploy` builds only `src/`). Do not run
-`npm audit fix --force` to "fix" these: it will swap in the broken pool version.
-Revisit when the newer pool line works with current Vite.
+`apps/party` is pinned to `@cloudflare/vitest-pool-workers@0.12.21` + `vitest@3.2.6`
+(shared/mobile are also on `vitest@3.2.6`). `0.12.21` is the **ceiling for this
+setup**: pool `0.8.57 – 0.12.x` support `vitest 2.0.x - 3.2.x` *and* keep the
+`@cloudflare/vitest-pool-workers/config` subpath that `vitest.config.ts` imports
+`defineWorkersConfig` from; pool `0.13.0+` jumps to `vitest ^4.1.0` **and drops the
+`/config` export** (it ships a `codemods/vitest-v3-to-v4` instead), so moving past
+`0.12.x` requires a Vitest 4 migration + a config-import rewrite. The `3.2.6` bump
+cleared the two `npm audit` **criticals** (the Vitest UI-server CVE + the pool
+aggregator) and the `devalue` high. Residual advisories on this line
+(miniflare/undici/ws/esbuild + the pool's nested wrangler) are ALL in the test
+runner / dev tooling and are NEVER bundled into the deployed Worker
+(`wrangler deploy` builds only `src/`). Do not run `npm audit fix --force` to "fix"
+these: it swaps in the `vitest 4` pool line. Revisit (Vitest 4 migration) when
+that line is worth adopting.
+
+The remaining `npm audit` advisories are all dev/build-time tooling with no
+deployed-runtime exposure: the test-pool chain above; the Expo **build** toolchain
+(`@expo/cli`/`config`/`metro-config`/`prebuild-config`, `postcss`, `uuid` via
+`xcode`, `react-native`'s jest/babel test deps) — only cleared by SDK 56 /
+RN 0.86 majors; and `markdownlint-cli2`'s `markdown-it`/`js-yaml` (docs lint;
+npm's "fix" is a downgrade). A root `overrides` for `postcss` does **not** take
+(npm leaves Expo's nested `~8.4.x` copy in place), and forcing `uuid` past `xcode`'s
+`^7` pin risks breaking iOS prebuild — neither is worth it for build-time-only
+advisories. Revisit the Expo cluster at the next SDK upgrade.
 
 ### Game rules are pure and deterministic
 
