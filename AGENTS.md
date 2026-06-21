@@ -160,25 +160,27 @@ wired only at the app entry (`app/_layout.tsx`). Mobile uses **extensionless**
 relative imports (for Metro), unlike `packages/shared` / `apps/party` which use
 `.js` extensions.
 
-### Expo SDK 54: Reanimated pinned to v3, explicit `babel-preset-expo`
+### Expo SDK 54: Reanimated 4 + worklets, explicit `babel-preset-expo`
 
 Two non-obvious constraints from the SDK 52 → 54 upgrade:
 
-- **`react-native-reanimated` is intentionally pinned to `~3.19.5`**, not SDK 54's
-  bundled `~4.1.1`. `moti` (used for `MotiView`/`AnimatePresence` across the UI)
-  still depends on Reanimated 3; Reanimated 4 also requires `react-native-worklets`
-  and drops the Legacy Architecture. The pin is recorded in `expo.install.exclude`
-  in `apps/mobile/package.json`, so `expo install --fix` / `expo-doctor` won't try
-  to bump it. New Architecture is on (`newArchEnabled: true`), which Reanimated 3
-  still supports. If `moti` ships Reanimated 4 support, drop the pin + exclude and
-  add `react-native-worklets` (and switch the babel plugin to
-  `react-native-worklets/plugin`).
+- **`react-native-reanimated` must be `~4.1.1` + `react-native-worklets@0.5.1`**,
+  the versions SDK 54's **Expo Go** ships natively. Expo Go is a prebuilt binary;
+  its native modules can't be swapped, so the JS must match. We initially pinned
+  Reanimated **3** (moti is built on RA3) — the web build (JS-only) worked and e2e
+  passed, but Expo Go on a device crashed at startup with
+  `Exception in HostObject::get for prop 'ReanimatedModule'` (a `NativeProxy`
+  NullPointerException) because JS RA3 met native RA4. `moti@0.30` has no RA4
+  release but its peer is `react-native-reanimated: "*"` and it works with RA4 for
+  the **simple** `MotiView`/`AnimatePresence` fades/translates this app uses (avoid
+  RA4-only CSS/keyframe features through moti). Reanimated 4 needs New Architecture
+  (`newArchEnabled: true`, already on) and the Babel plugin moved: `babel.config.js`
+  uses **`react-native-worklets/plugin`** (LAST), not `react-native-reanimated/plugin`.
 - **`babel-preset-expo` is an explicit `devDependency`.** In this workspace npm
   nests it under `node_modules/expo/node_modules`, where Metro/Babel (resolving
   from `apps/mobile`) can't find it — the web bundle then 500s with
   `Cannot find module 'babel-preset-expo'`. Listing it directly hoists it to the
-  root `node_modules` where it resolves. `babel.config.js` still uses
-  `react-native-reanimated/plugin` (correct for Reanimated 3).
+  root `node_modules` where it resolves.
 
 ### Call the global `fetch` as a free function (web)
 
