@@ -12,6 +12,7 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import type { LobbyHistoryItem } from '@trap/shared';
+import { normalizeLobbyCode } from '@trap/shared';
 import { authStore, selectIsAuthenticated } from '../src/state/auth';
 import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
@@ -85,7 +86,7 @@ export default function HomeScreen() {
   };
 
   const joinLobby = () => {
-    const code = joinCode.trim().toUpperCase();
+    const code = normalizeLobbyCode(joinCode);
     if (code.length === 0) return;
     router.push(`/lobby/${code}`);
   };
