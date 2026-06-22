@@ -121,16 +121,28 @@ export default {
       // created:false when that code already maps to a live (or concluded,
       // not-yet-expired) lobby. getServerByName persists PartyServer's name
       // record so the later WebSocket connect can resolve the lobby.
-      const code = await pickUnusedCode(async (candidate) => {
-        const stub = await getServerByName(env.LOBBY, candidate);
-        const res = await stub.fetch(
-          `https://do/parties/lobby/${candidate}/create`,
-          { method: 'POST' }
-        );
-        const data = (await res.json()) as { created?: boolean };
-        return data.created === true;
-      });
-      return json({ code, status: 'waiting' });
+      //
+      // Only a clean created:false counts as a collision (retry another code).
+      // A non-ok probe is a DO/transport failure: throw so it surfaces as a 503
+      // rather than masquerading as collision exhaustion or escaping the handler
+      // as an uncaught (CORS-less) 500.
+      try {
+        const code = await pickUnusedCode(async (candidate) => {
+          const stub = await getServerByName(env.LOBBY, candidate);
+          const res = await stub.fetch(
+            `https://do/parties/lobby/${candidate}/create`,
+            { method: 'POST' }
+          );
+          if (!res.ok) {
+            throw new Error(`lobby create probe failed: ${res.status}`);
+          }
+          const data = (await res.json()) as { created?: boolean };
+          return data.created === true;
+        });
+        return json({ code, status: 'waiting' });
+      } catch {
+        return json({ error: 'could not create lobby', code: 'lobby_create_failed' }, 503);
+      }
     }
 
     // ---- PartyServer (WebSocket + DO HTTP) ------------------------------
