@@ -39,6 +39,10 @@ async function main(): Promise<void> {
   const { usernameLc, newPassword, remote } = args;
   const target = remote ? '--remote' : '--local';
 
+  console.log(
+    `Resetting password for '${usernameLc}' on the ${remote ? 'REMOTE (production)' : 'local'} D1 database...`
+  );
+
   const hash = await hashPassword(newPassword);
   const dir = mkdtempSync(join(tmpdir(), 'reset-pw-'));
   const file = join(dir, 'reset.sql');

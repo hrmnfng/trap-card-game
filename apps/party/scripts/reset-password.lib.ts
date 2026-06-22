@@ -37,7 +37,12 @@ export function parseResetArgs(argv: string[]): ResetArgs {
 /**
  * Build the UPDATE. `passwordHash` is a base64 PBKDF2 string and `usernameLc`
  * matches USERNAME_RE, so neither can contain a single quote — safe to inline.
+ * We still assert that here so the no-injection guarantee travels with this
+ * function rather than depending on every caller having validated first.
  */
 export function buildUpdateSql(usernameLc: string, passwordHash: string): string {
+  if (/['\\;]/.test(usernameLc) || /['\\;]/.test(passwordHash)) {
+    throw new Error('refusing to build SQL: usernameLc/passwordHash contain unsafe characters');
+  }
   return `UPDATE users SET password_hash = '${passwordHash}' WHERE username_lc = '${usernameLc}';`;
 }

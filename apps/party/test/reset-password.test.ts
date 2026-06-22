@@ -35,4 +35,9 @@ describe('buildUpdateSql', () => {
       "UPDATE users SET password_hash = 'pbkdf2$100000$c2FsdA==$aGFzaA==' WHERE username_lc = 'alice';"
     );
   });
+
+  it('refuses to inline unsafe characters', () => {
+    expect(() => buildUpdateSql("a' OR '1'='1", 'pbkdf2$1$x$y')).toThrow();
+    expect(() => buildUpdateSql('alice', "h'; DROP TABLE users;--")).toThrow();
+  });
 });
