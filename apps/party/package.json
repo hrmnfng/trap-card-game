@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "db:apply:local": "wrangler d1 execute trapcard --local --file=./src/db/schema.sql",
-    "db:apply:remote": "wrangler d1 execute trapcard --remote --file=./src/db/schema.sql"
+    "db:apply:remote": "wrangler d1 execute trapcard --remote --file=./src/db/schema.sql",
+    "reset-password": "node --disable-warning=ExperimentalWarning scripts/reset-password.ts"
   },
   "dependencies": {
     "@trap/shared": "*",
