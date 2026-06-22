@@ -40,10 +40,17 @@ Make joining a game easier:
 Crockford's payoff is on input. Before connecting, the client normalizes a typed
 code so look-alike keys can't cause a miss:
 
-- Uppercase.
-- Map `I` → `1`, `L` → `1`, `O` → `0` (Crockford's decode rule). `U` is simply
-  not in the alphabet, so it never appears in a generated code.
-- Strip surrounding whitespace.
+- Strip surrounding whitespace and uppercase (always).
+- Map `I` → `1`, `L` → `1`, `O` → `0` (Crockford's decode rule) **only when the
+  input is the new code length (4 chars)**. `U` is not in the alphabet, so it
+  never appears in a generated code.
+
+The length guard matters: the **legacy** 6-char alphabet *included* `I`, `L`,
+`O`, and `U`, so a legacy code could legitimately contain those letters.
+Applying the confusable-mapping to a 6-char code would corrupt it (e.g. `HELLO1`
+→ `HE1101`) and point at the wrong Durable Object. Restricting the mapping to
+4-char input keeps every legacy code passing through untouched while still
+disambiguating new codes.
 
 This is a pure helper in `@trap/shared` (e.g. `normalizeLobbyCode(input): string`)
 so both the generator's alphabet and the normalizer live next to each other and
