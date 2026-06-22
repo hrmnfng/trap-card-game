@@ -89,12 +89,17 @@ function waitFor<T extends ServerMessage['type']>(
 }
 
 describe('LobbyDO HTTP flow', () => {
-  it('creates a lobby via HTTP', async () => {
+  it('creates a lobby via HTTP and reports created: true', async () => {
     const res = await createLobby('ROOM01');
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { lobbyCode: string; status: string };
+    const body = (await res.json()) as {
+      lobbyCode: string;
+      status: string;
+      created: boolean;
+    };
     expect(body.lobbyCode).toBe('ROOM01');
     expect(body.status).toBe('waiting');
+    expect(body.created).toBe(true);
   });
 
   // SKIPPED on the current pool (@cloudflare/vitest-pool-workers@0.12.x). A

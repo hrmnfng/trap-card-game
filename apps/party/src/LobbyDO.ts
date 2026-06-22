@@ -110,8 +110,13 @@ export class LobbyDO extends Server<Env> {
 
     // POST .../create  -> reserve/create the room
     if (request.method === 'POST' && url.pathname.endsWith('/create')) {
-      const room = await this.ensureRoom();
-      return json({ lobbyCode: room.lobbyCode, status: room.status });
+      const existing = await this.loadRoom();
+      const room = existing ?? (await this.ensureRoom());
+      return json({
+        lobbyCode: room.lobbyCode,
+        status: room.status,
+        created: existing === null,
+      });
     }
 
     // GET .../state?playerId=...  -> per-player filtered state

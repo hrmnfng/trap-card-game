@@ -21,12 +21,10 @@ import {
   registerDeviceToken,
 } from './auth.js';
 import { listLobbyHistory } from './history.js';
+import { pickUnusedCode } from './lobbyCodes.js';
 import type { Env } from './env.js';
 
 export { LobbyDO } from './LobbyDO.js';
-
-const LOBBY_CODE_LENGTH = 6;
-const LOBBY_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -49,15 +47,6 @@ function json(body: unknown, status = 200): Response {
  */
 function preflight(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
-}
-
-function generateLobbyCode(): string {
-  let code = '';
-  const bytes = crypto.getRandomValues(new Uint8Array(LOBBY_CODE_LENGTH));
-  for (let i = 0; i < LOBBY_CODE_LENGTH; i++) {
-    code += LOBBY_CODE_ALPHABET[bytes[i]! % LOBBY_CODE_ALPHABET.length];
-  }
-  return code;
 }
 
 async function readJson<T>(request: Request): Promise<T | null> {
@@ -128,15 +117,32 @@ export default {
       const user = await getUserFromToken(env, token);
       if (!user) return json({ error: 'unauthorized' }, 401);
 
-      const code = generateLobbyCode();
-      // getServerByName addresses the DO by name and persists PartyServer's
-      // name record, so the subsequent WebSocket connect (routed via
-      // routePartykitRequest) can always resolve the lobby. Prefer this over a
-      // raw idFromName()+stub.fetch(), which PartyServer cannot name-resolve.
-      const stub = await getServerByName(env.LOBBY, code);
-      // Provision the DO state via its HTTP create route.
-      await stub.fetch(`https://do/parties/lobby/${code}/create`, { method: 'POST' });
-      return json({ code, status: 'waiting' });
+      // Mint a unique code: probe the DO's /create route, which returns
+      // created:false when that code already maps to a live (or concluded,
+      // not-yet-expired) lobby. getServerByName persists PartyServer's name
+      // record so the later WebSocket connect can resolve the lobby.
+      //
+      // Only a clean created:false counts as a collision (retry another code).
+      // A non-ok probe is a DO/transport failure: throw so it surfaces as a 503
+      // rather than masquerading as collision exhaustion or escaping the handler
+      // as an uncaught (CORS-less) 500.
+      try {
+        const code = await pickUnusedCode(async (candidate) => {
+          const stub = await getServerByName(env.LOBBY, candidate);
+          const res = await stub.fetch(
+            `https://do/parties/lobby/${candidate}/create`,
+            { method: 'POST' }
+          );
+          if (!res.ok) {
+            throw new Error(`lobby create probe failed: ${res.status}`);
+          }
+          const data = (await res.json()) as { created?: boolean };
+          return data.created === true;
+        });
+        return json({ code, status: 'waiting' });
+      } catch {
+        return json({ error: 'could not create lobby', code: 'lobby_create_failed' }, 503);
+      }
     }
 
     // ---- PartyServer (WebSocket + DO HTTP) ------------------------------
