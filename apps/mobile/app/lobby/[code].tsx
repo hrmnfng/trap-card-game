@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
@@ -21,13 +21,23 @@ export default function LobbyScreen() {
   const error = useGame((s) => s.error);
 
   const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copyCode = async () => {
     if (!code) return;
-    await Clipboard.setStringAsync(code);
+    const ok = await Clipboard.setStringAsync(code);
+    if (!ok) return; // copy failed (e.g. no clipboard permission / insecure web context) — don't claim success
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1500);
   };
+
+  // Clear the "Copied!" reset timer if we leave the lobby before it fires.
+  useEffect(() => {
+    return () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    };
+  }, []);
 
   // Connect to the lobby once we know who we are.
   useEffect(() => {
