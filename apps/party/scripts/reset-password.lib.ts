@@ -1,11 +1,9 @@
 /**
- * Pure helpers for the reset-password CLI. No `node:*` or Worker imports, so they
- * run in the vitest workers pool. The CLI entry (reset-password.ts) adds the
- * Node-only I/O (hashing, fs, wrangler shell-out).
+ * Pure helpers for the reset-password CLI. No `node:*` or Worker imports (only
+ * the pure `@trap/shared`), so they run in the vitest workers pool. The CLI
+ * entry (reset-password.ts) adds the Node-only I/O (hashing, fs, wrangler).
  */
-
-/** Same rule as auth.ts validateUsername: 3-20 letters/numbers/underscore. */
-export const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
+import { isValidUsername } from '@trap/shared';
 
 export interface ResetArgs {
   username: string;
@@ -25,7 +23,7 @@ export function parseResetArgs(argv: string[]): ResetArgs {
   if (username === undefined || newPassword === undefined) {
     throw new Error(USAGE);
   }
-  if (!USERNAME_RE.test(username)) {
+  if (!isValidUsername(username)) {
     throw new Error('username must be 3-20 characters of letters, numbers, or underscore');
   }
   if (newPassword.length === 0) {
@@ -36,7 +34,7 @@ export function parseResetArgs(argv: string[]): ResetArgs {
 
 /**
  * Build the UPDATE. `passwordHash` is a base64 PBKDF2 string and `usernameLc`
- * matches USERNAME_RE, so neither can contain a single quote — safe to inline.
+ * passed `isValidUsername`, so neither can contain a single quote — safe to inline.
  * We still assert that here so the no-injection guarantee travels with this
  * function rather than depending on every caller having validated first.
  */

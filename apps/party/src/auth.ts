@@ -11,11 +11,13 @@
  */
 
 import type { AuthResponse, User } from '@trap/shared';
+import {
+  USERNAME_CHARSET_RE,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+} from '@trap/shared';
 import { hashPassword, verifyPassword } from './password.js';
 import { TOKEN_TTL_SECONDS, type Env } from './env.js';
-
-const MIN_USERNAME_LEN = 3;
-const MAX_USERNAME_LEN = 20;
 
 export interface AuthError {
   status: number;
@@ -33,14 +35,14 @@ function fail(status: number, code: string, message: string): AuthOutcome<never>
 
 /** Validate username format (alphanumeric + underscore, length bounds). */
 export function validateUsername(username: string): AuthError | null {
-  if (username.length < MIN_USERNAME_LEN || username.length > MAX_USERNAME_LEN) {
+  if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
     return {
       status: 400,
       code: 'invalid_username',
-      message: `Username must be ${MIN_USERNAME_LEN}-${MAX_USERNAME_LEN} characters`,
+      message: `Username must be ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters`,
     };
   }
-  if (!/^[A-Za-z0-9_]+$/.test(username)) {
+  if (!USERNAME_CHARSET_RE.test(username)) {
     return {
       status: 400,
       code: 'invalid_username',
