@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
+import * as Clipboard from 'expo-clipboard';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
@@ -18,6 +19,15 @@ export default function LobbyScreen() {
   const connectionStatus = useGame((s) => s.connectionStatus);
   const lobbyCode = useGame((s) => s.lobbyCode);
   const error = useGame((s) => s.error);
+
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    if (!code) return;
+    await Clipboard.setStringAsync(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   // Connect to the lobby once we know who we are.
   useEffect(() => {
@@ -52,7 +62,10 @@ export default function LobbyScreen() {
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: 'timing', duration: 260 }}
     >
-      <Text style={styles.code}>Lobby {code}</Text>
+      <Pressable onPress={copyCode} testID="copy-code">
+        <Text style={styles.code}>Lobby {code}</Text>
+        <Text style={styles.copyHint}>{copied ? 'Copied!' : 'Tap to copy'}</Text>
+      </Pressable>
       <Text style={styles.status}>
         {connectionStatus === 'open'
           ? `${players.length} player${players.length === 1 ? '' : 's'} waiting`
@@ -101,6 +114,7 @@ export default function LobbyScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 12 },
   code: { color: colors.text, fontSize: 26, fontWeight: '700', letterSpacing: 2 },
+  copyHint: { color: colors.muted, fontSize: 12, marginTop: 2 },
   status: { color: colors.muted, fontSize: 15 },
   error: { color: colors.danger, fontSize: 14 },
   list: { flexGrow: 0, marginVertical: 8 },
