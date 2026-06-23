@@ -14,35 +14,35 @@
  */
 
 /** Canonical lobby / game lifecycle status. */
-export type LobbyStatus = 'waiting' | 'in-progress' | 'concluded';
+export type LobbyStatus = 'waiting' | 'prep' | 'in-progress' | 'concluded';
 
 /** Card visibility status from a viewer's perspective. */
 export type CardStatus = 'hidden' | 'revealed';
 
 /** Game action kinds recorded in the event log. */
-export type GameActionType = 'join' | 'leave' | 'distribute' | 'play_card';
+export type GameActionType =
+  | 'join'
+  | 'leave'
+  | 'set_ready'
+  | 'distribute'
+  | 'play_card';
 
-/** Default game configuration (ported from backend `Settings`). */
+/** Maximum length of an authored trap statement (characters, after trim). */
+export const MAX_STATEMENT_LENGTH = 100;
+
+/** Default game configuration. */
 export interface GameSettings {
   minPlayers: number;
   maxPlayers: number;
   cardsPerPlayer: number;
-  minCardValue: number;
-  maxCardValue: number;
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   minPlayers: 2,
   maxPlayers: 10,
   cardsPerPlayer: 3,
-  minCardValue: 1,
-  maxCardValue: 9,
 };
 
-/**
- * A single event in the event-sourced game log. The full game state is derived
- * by replaying these events (mirrors the legacy `GameAction` table design).
- */
 export interface GameEvent {
   /** Unique event id. */
   id: string;
@@ -50,9 +50,11 @@ export interface GameEvent {
   type: GameActionType;
   /** The player who performed the action. */
   playerId: string;
-  /** Card value (for `distribute` / `play_card`). */
-  cardValue?: number;
-  /** Card id (for `distribute` / `play_card`). Stored in legacy `action_metadata`. */
+  /** Authored statement (for `distribute` / `play_card`). */
+  statement?: string;
+  /** Ready flag (for `set_ready`). */
+  ready?: boolean;
+  /** Card id (for `distribute` / `play_card`). */
   cardId?: string;
   /** Target player (for `play_card`). */
   targetId?: string;
@@ -63,16 +65,19 @@ export interface GameEvent {
 /** A card as seen in a player's own hand. */
 export interface Card {
   id: string;
-  value: number | null;
+  /** Authored statement; null when hidden from this viewer. */
+  statement: string | null;
   status: CardStatus;
   ownerId: string;
 }
 
-/** Public, per-player info (other players' card values are hidden). */
+/** Public, per-player info (other players' statements are hidden). */
 export interface PlayerView {
   id: string;
   username: string;
   cardsRemaining: number;
+  isReady: boolean;
+  hasSubmitted: boolean;
 }
 
 /** A play action surfaced in the game history feed. */
@@ -83,19 +88,22 @@ export interface GameHistoryItem {
   playerUsername: string;
   targetId: string | null;
   targetUsername: string | null;
-  cardValue: number | null;
+  /** The activated trap statement (revealed to everyone on play). */
+  statement: string | null;
   timestamp: string;
 }
 
 /**
  * The full game state, filtered for a specific viewing player.
- * `myCards` shows real values; other players only expose counts.
+ * `myCards` shows real statements; other players only expose counts/flags.
  */
 export interface GameState {
   lobbyId: string;
   lobbyCode: string;
   status: LobbyStatus;
   ownerId: string | null;
+  /** Fixed cards-per-player for this game (drives the prep UI). */
+  cardsPerPlayer: number;
   players: PlayerView[];
   myCards: Card[];
   gameHistory: GameHistoryItem[];
