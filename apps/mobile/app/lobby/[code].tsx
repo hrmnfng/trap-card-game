@@ -7,6 +7,7 @@ import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PressableScale } from '../../src/ui/PressableScale';
+import { screenForState } from '../../src/lib/navigation';
 
 const MIN_PLAYERS = 2;
 
@@ -26,20 +27,18 @@ export default function LobbyScreen() {
   const copyCode = async () => {
     if (!code) return;
     const ok = await Clipboard.setStringAsync(code);
-    if (!ok) return; // copy failed (e.g. no clipboard permission / insecure web context) — don't claim success
+    if (!ok) return;
     setCopied(true);
     if (copyTimer.current) clearTimeout(copyTimer.current);
     copyTimer.current = setTimeout(() => setCopied(false), 1500);
   };
 
-  // Clear the "Copied!" reset timer if we leave the lobby before it fires.
   useEffect(() => {
     return () => {
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
 
-  // Connect to the lobby once we know who we are.
   useEffect(() => {
     if (!code || !userId || !username) return;
     if (lobbyCode !== code) {
@@ -47,18 +46,22 @@ export default function LobbyScreen() {
     }
   }, [code, userId, username, lobbyCode]);
 
-  // When the owner starts the game, everyone moves to the game screen.
+  // Advance to prep/game when the status moves on.
+  const me = gameState?.players.find((p) => p.id === userId);
   useEffect(() => {
-    if (gameState?.status === 'in-progress' && code) {
-      router.replace(`/game/${code}`);
-    }
-  }, [gameState?.status, code]);
+    if (!gameState || !code) return;
+    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
+    if (target !== 'lobby') router.replace(`/${target}/${code}`);
+  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
   const players = gameState?.players ?? [];
   const isOwner = gameState?.ownerId === userId;
-  const canStart = isOwner && players.length >= MIN_PLAYERS;
+  const allReady = players.length > 0 && players.every((p) => p.isReady);
+  const canStart = isOwner && players.length >= MIN_PLAYERS && allReady;
+  const cardsPerPlayer = gameState?.cardsPerPlayer ?? 3;
+  const iAmReady = me?.isReady ?? false;
 
   const leave = () => {
     gameStore.getState().leave();
@@ -78,9 +81,10 @@ export default function LobbyScreen() {
       </Pressable>
       <Text style={styles.status}>
         {connectionStatus === 'open'
-          ? `${players.length} player${players.length === 1 ? '' : 's'} waiting`
+          ? `${players.length} player${players.length === 1 ? '' : 's'} in lobby`
           : `Connection: ${connectionStatus}`}
       </Text>
+      <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <FlatList
@@ -94,20 +98,35 @@ export default function LobbyScreen() {
               {item.id === gameState?.ownerId ? '  (host)' : ''}
               {item.id === userId ? '  (you)' : ''}
             </Text>
+            <Text style={item.isReady ? styles.ready : styles.notReady}>
+              {item.isReady ? 'Ready' : 'Not ready'}
+            </Text>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.subtle}>Waiting for players…</Text>}
       />
 
+      <PressableScale
+        testID="ready-toggle"
+        style={[styles.button, iAmReady && styles.buttonSecondary]}
+        onPress={() => gameStore.getState().setReady(!iAmReady)}
+      >
+        <Text style={styles.buttonText}>{iAmReady ? "I'm not ready" : "I'm ready"}</Text>
+      </PressableScale>
+
       {isOwner ? (
         <PressableScale
           testID="start-game"
           style={[styles.button, !canStart && styles.buttonDisabled]}
-          onPress={() => gameStore.getState().startGame()}
+          onPress={() => gameStore.getState().startPrep()}
           disabled={!canStart}
         >
           <Text style={styles.buttonText}>
-            {canStart ? 'Start game' : `Need ${MIN_PLAYERS}+ players`}
+            {canStart
+              ? 'Start (author cards)'
+              : players.length < MIN_PLAYERS
+                ? `Need ${MIN_PLAYERS}+ players`
+                : 'Waiting for all to ready'}
           </Text>
         </PressableScale>
       ) : (
@@ -134,16 +153,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   playerName: { color: colors.text, fontSize: 16 },
+  ready: { color: colors.accent, fontSize: 14, fontWeight: '700' },
+  notReady: { color: colors.muted, fontSize: 14 },
   subtle: { color: colors.muted, fontSize: 14 },
   button: {
     backgroundColor: colors.accent,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 'auto',
+    marginTop: 8,
   },
+  buttonSecondary: { backgroundColor: colors.surface },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
   linkButton: { alignItems: 'center', paddingVertical: 8 },
