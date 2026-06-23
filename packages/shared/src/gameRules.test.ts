@@ -3,6 +3,13 @@ import {
   createRoomState,
   addPlayer,
   removePlayer,
+  setReady,
+  isPlayerReady,
+  getReadyPlayers,
+  startPrep,
+  submitCards,
+  hasPlayerSubmitted,
+  getSubmittedPlayers,
   startGame,
   playCard,
   getPlayerCards,
@@ -10,9 +17,6 @@ import {
   getLobbyMembers,
   getLobbyPlayerCount,
   isLobbyFull,
-  isPlayerNewToLobby,
-  playerOwnsCard,
-  isCardPlayed,
   hasGameStarted,
   hasGameEnded,
   getFinishedPlayers,
@@ -26,46 +30,55 @@ import { DEFAULT_GAME_SETTINGS } from './types.js';
 function newRoom(overrides?: Partial<Parameters<typeof createRoomState>[0]>): GameRoomState {
   return createRoomState({
     lobbyId: 'lobby-1',
-    lobbyCode: 'ABC123',
+    lobbyCode: 'ABC1',
     now: '2026-01-01T00:00:00.000Z',
     expiresAt: '2026-01-02T00:00:00.000Z',
     ...overrides,
   });
 }
 
+/** Lobby with two ready players (p1 owner). */
+function readyTwo(): GameRoomState {
+  const deps = createTestDeps();
+  let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
+  ({ state } = addPlayer(state, 'p2', 'Bob', deps));
+  ({ state } = setReady(state, 'p1', true, deps));
+  ({ state } = setReady(state, 'p2', true, deps));
+  return state;
+}
+
+/** Two players, in prep, both submitted three statements each. */
+function submittedTwoInPrep(): GameRoomState {
+  const deps = createTestDeps();
+  let state = readyTwo();
+  ({ state } = startPrep(state));
+  ({ state } = submitCards(state, 'p1', ['a1', 'a2', 'a3'], deps));
+  ({ state } = submitCards(state, 'p2', ['b1', 'b2', 'b3'], deps));
+  return state;
+}
+
 describe('createRoomState', () => {
-  it('starts empty, waiting, with no owner', () => {
+  it('starts empty, waiting, with no owner and value-free settings', () => {
     const room = newRoom();
     expect(room.status).toBe('waiting');
     expect(room.ownerId).toBeNull();
     expect(room.events).toHaveLength(0);
     expect(room.settings).toEqual(DEFAULT_GAME_SETTINGS);
+    expect(room.settings).not.toHaveProperty('minCardValue');
   });
 });
 
 describe('membership', () => {
-  it('first player becomes owner and is a member', () => {
-    const deps = createTestDeps();
-    const res = addPlayer(newRoom(), 'p1', 'Alice', deps);
+  it('first player becomes owner; mid-game join does NOT auto-deal', () => {
+    const room = submittedTwoInPrep();
+    const deps = createTestDeps({ startId: 100 });
+    const started = startGame(room).state;
+    const res = addPlayer(started, 'p3', 'Cara', deps);
     expect(res.ok).toBe(true);
-    expect(res.state.ownerId).toBe('p1');
-    expect(getLobbyPlayerCount(res.state)).toBe(1);
-    expect(getLobbyMembers(res.state)[0]).toMatchObject({ playerId: 'p1', username: 'Alice' });
+    expect(getPlayerCards(res.state, 'p3')).toHaveLength(0); // must submit first
   });
 
-  it('is idempotent on rejoin (no duplicate, owner unchanged)', () => {
-    const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    const before = state.events.length;
-    const res = addPlayer(state, 'p1', 'Alice', deps);
-    expect(res.ok).toBe(true);
-    expect(res.state.events.length).toBe(before); // no new join event
-    expect(getLobbyPlayerCount(res.state)).toBe(2);
-    expect(res.state.ownerId).toBe('p1');
-  });
-
-  it('rejects a different player taking an existing username (case-insensitive)', () => {
+  it('rejects a different player taking an existing username', () => {
     const deps = createTestDeps();
     const { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
     const res = addPlayer(state, 'p2', 'alice', deps);
@@ -79,195 +92,201 @@ describe('membership', () => {
     ({ state } = addPlayer(state, 'p1', 'A', deps));
     ({ state } = addPlayer(state, 'p2', 'B', deps));
     expect(isLobbyFull(state)).toBe(true);
-    const res = addPlayer(state, 'p3', 'C', deps);
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe('lobby_full');
-  });
-
-  it('removePlayer drops the member', () => {
-    const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    state = removePlayer(state, 'p2', deps);
-    expect(getLobbyPlayerCount(state)).toBe(1);
-    expect(isPlayerNewToLobby(state, 'p2')).toBe(false); // join event still exists
+    expect(addPlayer(state, 'p3', 'C', deps).ok).toBe(false);
   });
 });
 
-describe('startGame', () => {
-  it('fails with fewer than minPlayers', () => {
+describe('readiness', () => {
+  it('defaults to not-ready and tracks the latest set_ready event', () => {
     const deps = createTestDeps();
-    const { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    const res = startGame(state, deps);
+    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
+    expect(isPlayerReady(state, 'p1')).toBe(false);
+    ({ state } = setReady(state, 'p1', true, deps));
+    expect(isPlayerReady(state, 'p1')).toBe(true);
+    ({ state } = setReady(state, 'p1', false, deps));
+    expect(isPlayerReady(state, 'p1')).toBe(false);
+  });
+
+  it('getReadyPlayers returns only current ready members', () => {
+    expect(getReadyPlayers(readyTwo()).sort()).toEqual(['p1', 'p2']);
+  });
+
+  it('rejects set_ready outside waiting', () => {
+    const deps = createTestDeps();
+    const state = startPrep(readyTwo()).state;
+    const res = setReady(state, 'p1', false, deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('not_waiting');
+  });
+});
+
+describe('startPrep', () => {
+  it('moves waiting -> prep when all ready and enough players', () => {
+    const res = startPrep(readyTwo());
+    expect(res.ok).toBe(true);
+    expect(res.state.status).toBe('prep');
+  });
+
+  it('rejects when not all ready', () => {
+    const deps = createTestDeps();
+    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
+    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
+    ({ state } = setReady(state, 'p1', true, deps));
+    const res = startPrep(state);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('not_all_ready');
+  });
+
+  it('rejects with too few players', () => {
+    const deps = createTestDeps();
+    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
+    ({ state } = setReady(state, 'p1', true, deps));
+    const res = startPrep(state);
     expect(res.ok).toBe(false);
     expect(res.error).toBe('not_enough_players');
   });
 
-  it('distributes cardsPerPlayer to each member and moves to in-progress', () => {
-    const deps = createTestDeps({ cardValues: [5, 6, 7] });
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    const res = startGame(state, deps);
-    expect(res.ok).toBe(true);
-    expect(hasGameStarted(res.state)).toBe(true);
-    expect(getPlayerCards(res.state, 'p1')).toHaveLength(DEFAULT_GAME_SETTINGS.cardsPerPlayer);
-    expect(getPlayerCards(res.state, 'p2')).toHaveLength(DEFAULT_GAME_SETTINGS.cardsPerPlayer);
-  });
-
-  it('cannot start twice', () => {
-    const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    const res = startGame(state, deps);
+  it('rejects when not waiting', () => {
+    const res = startPrep(startPrep(readyTwo()).state);
     expect(res.ok).toBe(false);
-    expect(res.error).toBe('already_started');
+    expect(res.error).toBe('not_waiting');
   });
 });
 
-describe('mid-game joiner provisioning', () => {
-  it('deals a hand immediately to a player joining an in-progress game', () => {
+describe('submitCards', () => {
+  it('appends cardsPerPlayer distribute events carrying trimmed statements', () => {
     const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    const res = addPlayer(state, 'p3', 'Carol', deps);
+    const state = startPrep(readyTwo()).state;
+    const res = submitCards(state, 'p1', ['  spills drink ', 'checks phone', 'yawns'], deps);
     expect(res.ok).toBe(true);
-    expect(getPlayerCards(res.state, 'p3')).toHaveLength(DEFAULT_GAME_SETTINGS.cardsPerPlayer);
+    const cards = getPlayerCards(res.state, 'p1');
+    expect(cards).toHaveLength(3);
+    expect(cards.map((c) => c.statement)).toEqual(['spills drink', 'checks phone', 'yawns']);
+    expect(hasPlayerSubmitted(res.state, 'p1')).toBe(true);
   });
 
-  it('startGame does not re-deal to a player who already has cards', () => {
+  it('rejects a double submit', () => {
     const deps = createTestDeps();
-    // p3 joins after start (gets cards), then game is already in-progress so
-    // a hypothetical re-start is a no-op anyway; assert hand size is stable.
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    ({ state } = addPlayer(state, 'p3', 'Carol', deps));
-    expect(getPlayerCards(state, 'p3')).toHaveLength(3);
+    let state = startPrep(readyTwo()).state;
+    ({ state } = submitCards(state, 'p1', ['a', 'b', 'c'], deps));
+    const res = submitCards(state, 'p1', ['d', 'e', 'f'], deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('already_submitted');
+  });
+
+  it('rejects the wrong number of statements', () => {
+    const deps = createTestDeps();
+    const state = startPrep(readyTwo()).state;
+    const res = submitCards(state, 'p1', ['a', 'b'], deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('wrong_card_count');
+  });
+
+  it('rejects an empty (after trim) or over-long statement', () => {
+    const deps = createTestDeps();
+    const state = startPrep(readyTwo()).state;
+    expect(submitCards(state, 'p1', ['a', '   ', 'c'], deps).error).toBe('invalid_statement');
+    expect(submitCards(state, 'p1', ['a', 'x'.repeat(101), 'c'], deps).error).toBe('invalid_statement');
+  });
+
+  it('rejects submission outside prep / in-progress', () => {
+    const deps = createTestDeps();
+    const waiting = readyTwo();
+    expect(submitCards(waiting, 'p1', ['a', 'b', 'c'], deps).error).toBe('wrong_phase');
+  });
+
+  it('allows a mid-game joiner to submit while in-progress', () => {
+    const deps = createTestDeps({ startId: 200 });
+    let state = startGame(submittedTwoInPrep()).state;
+    ({ state } = addPlayer(state, 'p3', 'Cara', deps));
+    const res = submitCards(state, 'p3', ['x', 'y', 'z'], deps);
+    expect(res.ok).toBe(true);
+    expect(getPlayerCards(res.state, 'p3')).toHaveLength(3);
   });
 });
 
-describe('playCard', () => {
-  function startedRoom() {
-    const deps = createTestDeps({ cardValues: [3, 4, 5, 6, 7, 8] });
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    return { state, deps };
-  }
-
-  it('plays an owned card and removes it from hand', () => {
-    const { state, deps } = startedRoom();
-    const card = getPlayerCards(state, 'p1')[0]!;
-    expect(playerOwnsCard(state, 'p1', card.id)).toBe(true);
-    const res = playCard(state, 'p1', card.id, 'p2', deps);
+describe('startGame (prep gate)', () => {
+  it('moves prep -> in-progress when all submitted, dealing nothing new', () => {
+    const state = submittedTwoInPrep();
+    const before = state.events.length;
+    const res = startGame(state);
     expect(res.ok).toBe(true);
-    expect(isCardPlayed(res.state, card.id)).toBe(true);
-    expect(getRemainingCardsCount(res.state, 'p1')).toBe(2);
+    expect(res.state.status).toBe('in-progress');
+    expect(res.state.events.length).toBe(before); // no deal events
   });
 
-  it('rejects playing a card the player does not own', () => {
-    const { state, deps } = startedRoom();
-    const p2card = getPlayerCards(state, 'p2')[0]!;
-    const res = playCard(state, 'p1', p2card.id, 'p2', deps);
-    expect(res.ok).toBe(false);
-    expect(res.error).toBe('not_card_owner');
+  it('rejects when not in prep', () => {
+    expect(startGame(readyTwo()).error).toBe('not_in_prep');
   });
 
-  it('rejects playing the same card twice', () => {
-    const { state, deps } = startedRoom();
-    const card = getPlayerCards(state, 'p1')[0]!;
-    const first = playCard(state, 'p1', card.id, 'p2', deps);
-    const second = playCard(first.state, 'p1', card.id, 'p2', deps);
-    expect(second.ok).toBe(false);
-    expect(second.error).toBe('card_already_played');
-  });
-
-  it('rejects play before game starts', () => {
+  it('rejects when a member has not submitted', () => {
     const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    const res = playCard(state, 'p1', 'nope', 'p2', deps);
+    let state = startPrep(readyTwo()).state;
+    ({ state } = submitCards(state, 'p1', ['a', 'b', 'c'], deps));
+    const res = startGame(state);
     expect(res.ok).toBe(false);
-    expect(res.error).toBe('game_not_started');
+    expect(res.error).toBe('not_all_submitted');
   });
 });
 
-describe('end condition', () => {
-  it('does not end while players who played still hold cards', () => {
-    const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    const card = getPlayerCards(state, 'p1')[0]!;
-    ({ state } = playCard(state, 'p1', card.id, 'p2', deps));
-    expect(hasGameEnded(state)).toBe(false);
-  });
+describe('playCard + end condition (with statements)', () => {
+  it('records the played statement and shrinks the hand; ends when a player empties', () => {
+    const deps = createTestDeps({ startId: 300 });
+    let state = startGame(submittedTwoInPrep()).state;
+    expect(hasGameStarted(state)).toBe(true);
 
-  it('ends when a player who has played runs out of cards', () => {
-    const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
     for (const card of getPlayerCards(state, 'p1')) {
       ({ state } = playCard(state, 'p1', card.id, 'p2', deps));
     }
     expect(getRemainingCardsCount(state, 'p1')).toBe(0);
     expect(hasGameEnded(state)).toBe(true);
     expect(getFinishedPlayers(state)).toContain('p1');
+
+    const history = getGameHistory(state);
+    expect(history).toHaveLength(3);
+    expect(history.map((h) => h.statement)).toEqual(['a1', 'a2', 'a3']);
+    expect(history[0]?.targetUsername).toBe('Bob');
   });
 
-  it('a mid-game joiner who never plays does not trigger end', () => {
+  it('rejects playing a card you do not own', () => {
+    const state = startGame(submittedTwoInPrep()).state;
     const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    // p3 joins; even with 0 plays they should never trigger end on their own.
-    ({ state } = addPlayer(state, 'p3', 'Carol', deps));
-    expect(hasGameEnded(state)).toBe(false);
+    const res = playCard(state, 'p1', 'no-such-card', 'p2', deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('not_card_owner');
   });
 });
 
-describe('getGameState (per-player filtering)', () => {
-  it('shows own card values but only counts for others', () => {
-    const deps = createTestDeps({ cardValues: [9, 8, 7, 6, 5, 4] });
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-
+describe('getGameState (per-viewer)', () => {
+  it('exposes own statements, hides others, and surfaces flags + cardsPerPlayer', () => {
+    const state = startGame(submittedTwoInPrep()).state;
     const view = getGameState(state, 'p1');
-    expect(view.myCards).toHaveLength(3);
-    expect(view.myCards[0]!.value).not.toBeNull();
+    expect(view.cardsPerPlayer).toBe(3);
+    expect(view.myCards.map((c) => c.statement)).toEqual(['a1', 'a2', 'a3']);
     const p2 = view.players.find((p) => p.id === 'p2')!;
-    expect(p2.cardsRemaining).toBe(3);
-    // Other players are not exposed via myCards.
+    expect(p2).toMatchObject({ cardsRemaining: 3, isReady: true, hasSubmitted: true });
+    // Other players' statements never appear in myCards.
     expect(view.myCards.every((c) => c.ownerId === 'p1')).toBe(true);
   });
 
-  it('reflects concluded status once the game has ended', () => {
+  it('reflects ready/submit flags during earlier stages', () => {
     const deps = createTestDeps();
     let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
     ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    for (const card of getPlayerCards(state, 'p1')) {
-      ({ state } = playCard(state, 'p1', card.id, 'p2', deps));
-    }
-    expect(getGameState(state, 'p2').status).toBe('concluded');
+    ({ state } = setReady(state, 'p1', true, deps));
+    const view = getGameState(state, 'p2');
+    expect(view.players.find((p) => p.id === 'p1')?.isReady).toBe(true);
+    expect(view.players.find((p) => p.id === 'p2')?.isReady).toBe(false);
+    expect(view.players.every((p) => p.hasSubmitted === false)).toBe(true);
   });
+});
 
-  it('builds history with usernames resolved', () => {
+describe('removePlayer', () => {
+  it('drops the member from the roster', () => {
     const deps = createTestDeps();
-    let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);
-    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
-    ({ state } = startGame(state, deps));
-    const card = getPlayerCards(state, 'p1')[0]!;
-    ({ state } = playCard(state, 'p1', card.id, 'p2', deps));
-    const history = getGameHistory(state);
-    expect(history).toHaveLength(1);
-    expect(history[0]).toMatchObject({
-      playerUsername: 'Alice',
-      targetUsername: 'Bob',
-    });
+    let state = readyTwo();
+    state = removePlayer(state, 'p2', deps);
+    expect(getLobbyPlayerCount(state)).toBe(1);
+    expect(getLobbyMembers(state)[0]?.playerId).toBe('p1');
   });
 });

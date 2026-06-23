@@ -1,24 +1,16 @@
 /**
  * Pure, framework-agnostic game rules for the Trap Card Game.
  *
- * Ported from the legacy backend services:
- *  - `backend/app/services/game.py`   (card distribution, play, state derivation)
- *  - `backend/app/services/lobby.py`  (membership join/leave, mid-game provisioning)
- *
- * Design notes:
- *  - Event-sourced: the authoritative data is `GameRoomState.events`; derived
- *    views (hands, counts, history) are computed by replaying events. This
- *    mirrors the legacy `GameAction` table.
- *  - Pure functions: every function takes state + inputs and returns new state
- *    or a derived value. No I/O, no globals. This makes the rules trivially
- *    unit-testable and reusable on both the client and the Durable Object.
- *  - Determinism: randomness (card values, ids) is injected via `RuleDeps` so
- *    tests are reproducible. The legacy code called `random.randint`/`uuid4`
- *    directly, which was not testable.
+ * Event-sourced: the authoritative data is `GameRoomState.events`; derived views
+ * (hands, counts, history, readiness, submissions) are computed by replaying
+ * events. Pure functions only — no I/O, no globals — so the rules are trivially
+ * unit-testable and reusable on both the client and the Durable Object.
+ * Determinism: ids/time are injected via `RuleDeps`.
  */
 
 import {
   DEFAULT_GAME_SETTINGS,
+  MAX_STATEMENT_LENGTH,
   type Card,
   type GameEvent,
   type GameHistoryItem,
@@ -33,10 +25,6 @@ import {
 /* State shape                                                                */
 /* -------------------------------------------------------------------------- */
 
-/**
- * The complete, serializable state of a single lobby/game room.
- * This is what a Durable Object persists in storage.
- */
 export interface GameRoomState {
   lobbyId: string;
   lobbyCode: string;
@@ -55,8 +43,6 @@ export interface GameRoomState {
 export interface RuleDeps {
   /** Returns a unique id (e.g. crypto.randomUUID). */
   newId: () => string;
-  /** Returns an integer card value in [min, max] inclusive. */
-  randomCardValue: (min: number, max: number) => number;
   /** Returns an ISO-8601 timestamp. */
   now: () => string;
 }
@@ -65,7 +51,6 @@ export interface RuleDeps {
 export interface RuleResult {
   ok: boolean;
   state: GameRoomState;
-  /** Reason for failure when `ok` is false. */
   error?: string;
 }
 
@@ -73,7 +58,6 @@ export interface RuleResult {
 /* Construction                                                               */
 /* -------------------------------------------------------------------------- */
 
-/** Create an empty room state for a freshly created lobby. */
 export function createRoomState(params: {
   lobbyId: string;
   lobbyCode: string;
@@ -102,7 +86,6 @@ function appendEvent(state: GameRoomState, event: GameEvent): GameRoomState {
   return { ...state, events: [...state.events, event] };
 }
 
-/** Set of card ids that have been played (by anyone). */
 function playedCardIds(state: GameRoomState): Set<string> {
   const played = new Set<string>();
   for (const ev of state.events) {
@@ -111,7 +94,6 @@ function playedCardIds(state: GameRoomState): Set<string> {
   return played;
 }
 
-/** Whether a given player currently holds a given card (owns + not played). */
 export function playerOwnsCard(
   state: GameRoomState,
   playerId: string,
@@ -125,7 +107,6 @@ export function playerOwnsCard(
   );
 }
 
-/** Whether a card (by id) has already been played. */
 export function isCardPlayed(state: GameRoomState, cardId: string): boolean {
   return state.events.some(
     (ev) => ev.type === 'play_card' && ev.cardId === cardId
@@ -133,10 +114,9 @@ export function isCardPlayed(state: GameRoomState, cardId: string): boolean {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Membership (ported from lobby.py)                                          */
+/* Membership                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** True if the player has never joined this lobby (no prior `join` event). */
 export function isPlayerNewToLobby(
   state: GameRoomState,
   playerId: string
@@ -146,10 +126,9 @@ export function isPlayerNewToLobby(
   );
 }
 
-/** Current members (join adds, leave removes), in stable join order. */
 export function getLobbyMembers(state: GameRoomState): LobbyMember[] {
   const order: string[] = [];
-  const present = new Map<string, string>(); // playerId -> joinedAt
+  const present = new Map<string, string>();
   for (const ev of state.events) {
     if (ev.type === 'join') {
       if (!present.has(ev.playerId)) order.push(ev.playerId);
@@ -180,9 +159,9 @@ export function hasGameStarted(state: GameRoomState): boolean {
 }
 
 /**
- * Add a player to the lobby (idempotent join). For brand-new players who join
- * an already in-progress game, their starting hand is provisioned immediately
- * (mirrors `provision_new_player_cards`). The first joiner becomes owner.
+ * Add a player to the lobby (idempotent join). The first joiner becomes owner.
+ * There is no auto-deal: a mid-game joiner authors and submits their hand via
+ * `submitCards` before they can activate anything.
  */
 export function addPlayer(
   state: GameRoomState,
@@ -194,16 +173,13 @@ export function addPlayer(
     return { ok: false, state, error: 'lobby_full' };
   }
 
-  // Idempotent rejoin: known player, just succeed.
   if (!isPlayerNewToLobby(state, playerId)) {
-    // Keep username fresh.
     return {
       ok: true,
       state: { ...state, usernames: { ...state.usernames, [playerId]: username } },
     };
   }
 
-  // Reject duplicate username (case-insensitive) held by a different player.
   const members = getLobbyMembers(state);
   const clash = members.some(
     (m) => m.playerId !== playerId && m.username.toLowerCase() === username.toLowerCase()
@@ -216,29 +192,18 @@ export function addPlayer(
     ...state,
     usernames: { ...state.usernames, [playerId]: username },
   };
-
-  // First player becomes owner.
   if (!next.ownerId) {
     next = { ...next, ownerId: playerId };
   }
-
-  // Record join.
   next = appendEvent(next, {
     id: deps.newId(),
     type: 'join',
     playerId,
     timestamp: deps.now(),
   });
-
-  // Mid-game joiner: provision a starting hand now.
-  if (hasGameStarted(next)) {
-    next = dealHand(next, playerId, deps);
-  }
-
   return { ok: true, state: next };
 }
 
-/** Record a player leaving the lobby. */
 export function removePlayer(
   state: GameRoomState,
   playerId: string,
@@ -253,68 +218,140 @@ export function removePlayer(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Card distribution (ported from game.py)                                    */
+/* Readiness (stage 1)                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** Append `cardsPerPlayer` distribute events for a single player. */
-function dealHand(
+/** Set a player's ready flag. Allowed only while waiting. */
+export function setReady(
   state: GameRoomState,
   playerId: string,
+  ready: boolean,
   deps: RuleDeps
-): GameRoomState {
-  let next = state;
-  for (let i = 0; i < state.settings.cardsPerPlayer; i++) {
-    next = appendEvent(next, {
-      id: deps.newId(),
-      type: 'distribute',
-      playerId,
-      cardValue: deps.randomCardValue(
-        state.settings.minCardValue,
-        state.settings.maxCardValue
-      ),
-      cardId: deps.newId(),
-      timestamp: deps.now(),
-    });
+): RuleResult {
+  if (state.status !== 'waiting') {
+    return { ok: false, state, error: 'not_waiting' };
   }
-  return next;
+  const next = appendEvent(state, {
+    id: deps.newId(),
+    type: 'set_ready',
+    playerId,
+    ready,
+    timestamp: deps.now(),
+  });
+  return { ok: true, state: next };
 }
 
-/**
- * Start the game: distribute cards to players that don't already have them and
- * transition to `in-progress`. Returns failure if the game already started or
- * there are fewer than `minPlayers`.
- *
- * Mirrors `GameService.distribute_cards` + the owner's "start game" action.
- */
-export function startGame(state: GameRoomState, deps: RuleDeps): RuleResult {
-  if (hasGameStarted(state)) {
-    return { ok: false, state, error: 'already_started' };
+/** A player's readiness, from their latest `set_ready` event (default false). */
+export function isPlayerReady(state: GameRoomState, playerId: string): boolean {
+  let ready = false;
+  for (const ev of state.events) {
+    if (ev.type === 'set_ready' && ev.playerId === playerId) {
+      ready = ev.ready ?? false;
+    }
+  }
+  return ready;
+}
+
+export function getReadyPlayers(state: GameRoomState): string[] {
+  return getLobbyMembers(state)
+    .map((m) => m.playerId)
+    .filter((id) => isPlayerReady(state, id));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Stage 1 -> 2: start prep                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Move waiting -> prep. Gated on all present ready and >= minPlayers. */
+export function startPrep(state: GameRoomState): RuleResult {
+  if (state.status !== 'waiting') {
+    return { ok: false, state, error: 'not_waiting' };
   }
   const members = getLobbyMembers(state);
   if (members.length < state.settings.minPlayers) {
     return { ok: false, state, error: 'not_enough_players' };
   }
-
-  let next = state;
-  for (const member of members) {
-    const existing = getPlayerCards(next, member.playerId);
-    if (existing.length === 0) {
-      next = dealHand(next, member.playerId, deps);
-    }
+  if (!members.every((m) => isPlayerReady(state, m.playerId))) {
+    return { ok: false, state, error: 'not_all_ready' };
   }
-  next = { ...next, status: 'in-progress' };
+  return { ok: true, state: { ...state, status: 'prep' } };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Authoring (stage 2)                                                        */
+/* -------------------------------------------------------------------------- */
+
+export function hasPlayerSubmitted(state: GameRoomState, playerId: string): boolean {
+  return state.events.some(
+    (ev) => ev.type === 'distribute' && ev.playerId === playerId
+  );
+}
+
+export function getSubmittedPlayers(state: GameRoomState): string[] {
+  return getLobbyMembers(state)
+    .map((m) => m.playerId)
+    .filter((id) => hasPlayerSubmitted(state, id));
+}
+
+/**
+ * Submit a full, locked hand of authored statements. Allowed in `prep` (the
+ * normal path) or `in-progress` (a mid-game joiner who has not yet submitted).
+ * Appends one `distribute` event per trimmed statement.
+ */
+export function submitCards(
+  state: GameRoomState,
+  playerId: string,
+  statements: string[],
+  deps: RuleDeps
+): RuleResult {
+  if (state.status !== 'prep' && state.status !== 'in-progress') {
+    return { ok: false, state, error: 'wrong_phase' };
+  }
+  if (hasPlayerSubmitted(state, playerId)) {
+    return { ok: false, state, error: 'already_submitted' };
+  }
+  if (statements.length !== state.settings.cardsPerPlayer) {
+    return { ok: false, state, error: 'wrong_card_count' };
+  }
+  const trimmed = statements.map((s) => s.trim());
+  if (trimmed.some((s) => s.length === 0 || s.length > MAX_STATEMENT_LENGTH)) {
+    return { ok: false, state, error: 'invalid_statement' };
+  }
+  let next = state;
+  for (const statement of trimmed) {
+    next = appendEvent(next, {
+      id: deps.newId(),
+      type: 'distribute',
+      playerId,
+      statement,
+      cardId: deps.newId(),
+      timestamp: deps.now(),
+    });
+  }
   return { ok: true, state: next };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Stage 2 -> 3: start game                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** Move prep -> in-progress. Gated on all present members having submitted. */
+export function startGame(state: GameRoomState): RuleResult {
+  if (state.status !== 'prep') {
+    return { ok: false, state, error: 'not_in_prep' };
+  }
+  const members = getLobbyMembers(state);
+  if (!members.every((m) => hasPlayerSubmitted(state, m.playerId))) {
+    return { ok: false, state, error: 'not_all_submitted' };
+  }
+  return { ok: true, state: { ...state, status: 'in-progress' } };
 }
 
 /* -------------------------------------------------------------------------- */
 /* Hand / counts derivation                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** A player's current (un-played) cards, with real values. */
-export function getPlayerCards(
-  state: GameRoomState,
-  playerId: string
-): Card[] {
+export function getPlayerCards(state: GameRoomState, playerId: string): Card[] {
   const played = playedCardIds(state);
   const cards: Card[] = [];
   for (const ev of state.events) {
@@ -324,7 +361,7 @@ export function getPlayerCards(
     if (!played.has(ev.cardId)) {
       cards.push({
         id: ev.cardId,
-        value: ev.cardValue ?? null,
+        statement: ev.statement ?? null,
         status: 'hidden',
         ownerId: playerId,
       });
@@ -341,13 +378,9 @@ export function getRemainingCardsCount(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Playing a card (ported from game.py)                                       */
+/* Playing a card                                                             */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Play a card targeting another player. Validates ownership and that the card
- * has not already been played. There is no turn enforcement (free-for-all).
- */
 export function playCard(
   state: GameRoomState,
   playerId: string,
@@ -365,7 +398,6 @@ export function playCard(
     return { ok: false, state, error: 'card_already_played' };
   }
 
-  // Find the card's value from its distribute event.
   const distributeEv = state.events.find(
     (ev) =>
       ev.type === 'distribute' &&
@@ -380,7 +412,7 @@ export function playCard(
     id: deps.newId(),
     type: 'play_card',
     playerId,
-    cardValue: distributeEv.cardValue,
+    statement: distributeEv.statement,
     cardId,
     targetId: targetPlayerId,
     timestamp: deps.now(),
@@ -389,10 +421,9 @@ export function playCard(
 }
 
 /* -------------------------------------------------------------------------- */
-/* End condition (ported from game.py has_game_ended)                         */
+/* End condition                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** Player ids who have played at least one card. */
 function playersWhoHavePlayed(state: GameRoomState): Set<string> {
   const set = new Set<string>();
   for (const ev of state.events) {
@@ -401,11 +432,6 @@ function playersWhoHavePlayed(state: GameRoomState): Set<string> {
   return set;
 }
 
-/**
- * The game ends when any player who has played at least one card runs out of
- * cards. Players who joined mid-game but never played do not trigger the end.
- * Returns the ids of finished players (empty if not ended).
- */
 export function getFinishedPlayers(state: GameRoomState): string[] {
   if (!hasGameStarted(state)) return [];
   const played = playersWhoHavePlayed(state);
@@ -424,10 +450,9 @@ export function hasGameEnded(state: GameRoomState): boolean {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Full per-player state view (ported from game.py get_game_state)            */
+/* Full per-player state view                                                 */
 /* -------------------------------------------------------------------------- */
 
-/** Build the game history feed (all play_card actions, oldest first). */
 export function getGameHistory(state: GameRoomState): GameHistoryItem[] {
   return state.events
     .filter((ev) => ev.type === 'play_card')
@@ -437,31 +462,22 @@ export function getGameHistory(state: GameRoomState): GameHistoryItem[] {
       playerId: ev.playerId,
       playerUsername: state.usernames[ev.playerId] ?? 'Unknown',
       targetId: ev.targetId ?? null,
-      targetUsername: ev.targetId
-        ? state.usernames[ev.targetId] ?? null
-        : null,
-      cardValue: ev.cardValue ?? null,
+      targetUsername: ev.targetId ? state.usernames[ev.targetId] ?? null : null,
+      statement: ev.statement ?? null,
       timestamp: ev.timestamp,
     }));
 }
 
-/**
- * Derive the complete game state filtered for a specific viewing player.
- * The viewer sees real values for their own cards; other players expose only
- * remaining-card counts.
- */
-export function getGameState(
-  state: GameRoomState,
-  viewerId: string
-): GameState {
+export function getGameState(state: GameRoomState, viewerId: string): GameState {
   const members = getLobbyMembers(state);
   const players: PlayerView[] = members.map((m) => ({
     id: m.playerId,
     username: m.username,
     cardsRemaining: getRemainingCardsCount(state, m.playerId),
+    isReady: isPlayerReady(state, m.playerId),
+    hasSubmitted: hasPlayerSubmitted(state, m.playerId),
   }));
 
-  // Reflect computed end condition in the surfaced status.
   let status: LobbyStatus = state.status;
   if (hasGameEnded(state)) status = 'concluded';
 
@@ -470,6 +486,7 @@ export function getGameState(
     lobbyCode: state.lobbyCode,
     status,
     ownerId: state.ownerId,
+    cardsPerPlayer: state.settings.cardsPerPlayer,
     players,
     myCards: getPlayerCards(state, viewerId),
     gameHistory: getGameHistory(state),
