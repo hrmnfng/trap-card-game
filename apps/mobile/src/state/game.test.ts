@@ -44,8 +44,9 @@ const sampleState: GameState = {
   lobbyCode: 'ROOM1',
   status: 'in-progress',
   ownerId: 'p1',
-  players: [{ id: 'p1', username: 'Alice', cardsRemaining: 3 }],
-  myCards: [{ id: 'c1', value: 5, status: 'hidden', ownerId: 'p1' }],
+  cardsPerPlayer: 3,
+  players: [{ id: 'p1', username: 'Alice', cardsRemaining: 3, isReady: true, hasSubmitted: true }],
+  myCards: [{ id: 'c1', statement: null, status: 'hidden', ownerId: 'p1' }],
   gameHistory: [],
 };
 
@@ -89,7 +90,7 @@ describe('game store', () => {
       playerUsername: 'Bob',
       targetPlayerId: 'p1',
       targetUsername: 'Alice',
-      cardValue: 7,
+      statement: 'spills drink',
     };
     fake.emitMessage(event);
     expect(store.getState().lastCardPlayed).toEqual(event);

@@ -133,6 +133,21 @@ describe('LobbyConnection', () => {
     ]);
   });
 
+  it('serializes ready/prep/submit client messages', () => {
+    const { conn, fake } = setup();
+    conn.connect();
+
+    conn.setReady(true);
+    conn.startPrep();
+    conn.submitCards(['a', 'b']);
+
+    expect(fake.sent.map((s) => JSON.parse(s))).toEqual([
+      { type: 'set_ready', ready: true },
+      { type: 'start_prep' },
+      { type: 'submit_cards', statements: ['a', 'b'] },
+    ]);
+  });
+
   it('tracks connection status through open/close', () => {
     const { conn, fake } = setup();
     const statuses: string[] = [];

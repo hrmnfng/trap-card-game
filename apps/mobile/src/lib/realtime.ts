@@ -139,6 +139,18 @@ export class LobbyConnection {
     this.send({ type: 'start_game' });
   }
 
+  setReady(ready: boolean): void {
+    this.send({ type: 'set_ready', ready });
+  }
+
+  startPrep(): void {
+    this.send({ type: 'start_prep' });
+  }
+
+  submitCards(statements: string[]): void {
+    this.send({ type: 'submit_cards', statements });
+  }
+
   playCard(cardId: string, targetPlayerId: string): void {
     this.send({ type: 'play_card', cardId, targetPlayerId });
   }

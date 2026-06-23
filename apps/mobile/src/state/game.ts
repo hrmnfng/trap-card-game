@@ -38,6 +38,9 @@ export interface GameStoreState {
 
   connect(args: ConnectArgs): void;
   startGame(): void;
+  setReady(ready: boolean): void;
+  startPrep(): void;
+  submitCards(statements: string[]): void;
   playCard(cardId: string, targetPlayerId: string): void;
   requestState(): void;
   leave(): void;
@@ -114,6 +117,18 @@ export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreSta
 
     startGame() {
       connection?.startGame();
+    },
+
+    setReady(ready) {
+      connection?.setReady(ready);
+    },
+
+    startPrep() {
+      connection?.startPrep();
+    },
+
+    submitCards(statements) {
+      connection?.submitCards(statements);
     },
 
     playCard(cardId, targetPlayerId) {
