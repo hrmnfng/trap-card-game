@@ -37,7 +37,10 @@ async function main() {
   });
 
   let connected = false;
-  let started = false;
+  let readied = false;
+  let prepStarted = false;
+  let submitted = false;
+  let begun = false;
   socket.addEventListener('open', () => {
     connected = true;
     socket.send(JSON.stringify({ type: 'get_state' }));
@@ -49,13 +52,34 @@ async function main() {
     } catch {
       return;
     }
-    if (msg.type === 'state_update' && !started) {
-      const players = msg.state?.players ?? [];
-      if (players.length >= 2) {
-        started = true;
-        socket.send(JSON.stringify({ type: 'start_game' }));
-        console.log('player2: sent start_game');
-      }
+    if (msg.type !== 'state_update') return;
+    const state = msg.state ?? {};
+    const players = state.players ?? [];
+
+    // Ready up as soon as we are connected.
+    if (!readied) {
+      readied = true;
+      socket.send(JSON.stringify({ type: 'set_ready', ready: true }));
+    }
+    // Once both players are present and ready, the owner starts prep.
+    if (!prepStarted && players.length >= 2 && players.every((p) => p.isReady)) {
+      prepStarted = true;
+      socket.send(JSON.stringify({ type: 'start_prep' }));
+      console.log('player2: sent start_prep');
+    }
+    // In prep, submit our hand once.
+    if (!submitted && state.status === 'prep') {
+      submitted = true;
+      const n = state.cardsPerPlayer ?? 3;
+      const statements = Array.from({ length: n }, (_, i) => `p2 trap ${i + 1}`);
+      socket.send(JSON.stringify({ type: 'submit_cards', statements }));
+      console.log('player2: sent submit_cards');
+    }
+    // Once everyone has submitted, begin the game.
+    if (!begun && state.status === 'prep' && players.length >= 2 && players.every((p) => p.hasSubmitted)) {
+      begun = true;
+      socket.send(JSON.stringify({ type: 'start_game' }));
+      console.log('player2: sent start_game');
     }
   });
   socket.addEventListener('error', (ev) => {

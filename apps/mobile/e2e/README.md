@@ -35,8 +35,10 @@ First run is slow (Metro's initial web bundle); subsequent runs are ~8s.
 - `auth.spec.ts` — register → authenticated Home; logout → login round-trip.
 - `multiplayer.spec.ts` — two isolated browser contexts ("two devices"): host
   creates a lobby, guest joins by code, both see each other, the non-owner has
-  no Start control, the owner starts → each is dealt 3 cards, and a played card
-  is reflected on both clients (hand count drops, history shows on both).
+  no Start control; both players ready up, the owner starts prep, each authors
+  and submits 3 statements, the owner begins the game → each has a 3-card hand,
+  and a played card surfaces its statement on both clients (hand count drops,
+  history shows on both).
 
 ## Web-build gotchas (baked into `helpers.ts`)
 
