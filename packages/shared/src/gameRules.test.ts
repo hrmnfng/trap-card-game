@@ -49,7 +49,8 @@ function readyTwo(): GameRoomState {
 
 /** Two players, in prep, both submitted three statements each. */
 function submittedTwoInPrep(): GameRoomState {
-  const deps = createTestDeps();
+  // startId offset so these event ids don't collide with readyTwo's (0-3).
+  const deps = createTestDeps({ startId: 10 });
   let state = readyTwo();
   ({ state } = startPrep(state));
   ({ state } = submitCards(state, 'p1', ['a1', 'a2', 'a3'], deps));
@@ -69,7 +70,7 @@ describe('createRoomState', () => {
 });
 
 describe('membership', () => {
-  it('first player becomes owner; mid-game join does NOT auto-deal', () => {
+  it('mid-game join does NOT auto-deal (must submitCards first)', () => {
     const room = submittedTwoInPrep();
     const deps = createTestDeps({ startId: 100 });
     const started = startGame(room).state;
@@ -163,6 +164,10 @@ describe('submitCards', () => {
     expect(cards).toHaveLength(3);
     expect(cards.map((c) => c.statement)).toEqual(['spills drink', 'checks phone', 'yawns']);
     expect(hasPlayerSubmitted(res.state, 'p1')).toBe(true);
+  });
+
+  it('getSubmittedPlayers lists members who have submitted', () => {
+    expect(getSubmittedPlayers(submittedTwoInPrep()).sort()).toEqual(['p1', 'p2']);
   });
 
   it('rejects a double submit', () => {

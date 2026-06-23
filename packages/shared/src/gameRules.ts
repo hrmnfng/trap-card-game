@@ -252,6 +252,7 @@ export function isPlayerReady(state: GameRoomState, playerId: string): boolean {
   return ready;
 }
 
+/** Ids of current members who are ready. */
 export function getReadyPlayers(state: GameRoomState): string[] {
   return getLobbyMembers(state)
     .map((m) => m.playerId)
@@ -281,12 +282,14 @@ export function startPrep(state: GameRoomState): RuleResult {
 /* Authoring (stage 2)                                                        */
 /* -------------------------------------------------------------------------- */
 
+/** Whether a player has submitted their hand (has ≥1 `distribute` event). */
 export function hasPlayerSubmitted(state: GameRoomState, playerId: string): boolean {
   return state.events.some(
     (ev) => ev.type === 'distribute' && ev.playerId === playerId
   );
 }
 
+/** Ids of current members who have submitted their hand. */
 export function getSubmittedPlayers(state: GameRoomState): string[] {
   return getLobbyMembers(state)
     .map((m) => m.playerId)
