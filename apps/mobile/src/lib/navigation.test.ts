@@ -14,7 +14,8 @@ describe('screenForState', () => {
   it('sends a submitted in-progress player to the game', () => {
     expect(screenForState('in-progress', true)).toBe('game');
   });
-  it('maps concluded -> game', () => {
+  it('maps concluded -> game (regardless of submission)', () => {
     expect(screenForState('concluded', true)).toBe('game');
+    expect(screenForState('concluded', false)).toBe('game');
   });
 });

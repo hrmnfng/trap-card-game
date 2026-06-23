@@ -190,18 +190,6 @@ const styles = StyleSheet.create({
   opponentActionIdle: { color: colors.muted, fontSize: 13, fontWeight: '400' },
   opponentName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   hand: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  card: {
-    width: 56,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  cardSelected: { borderColor: colors.accent, backgroundColor: '#22543d' },
-  cardValue: { color: colors.text, fontSize: 24, fontWeight: '700' },
   historyItem: { color: colors.muted, fontSize: 14, marginTop: 4 },
   subtle: { color: colors.muted, fontSize: 14 },
   endedBanner: {

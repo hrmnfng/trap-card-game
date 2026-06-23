@@ -56,7 +56,9 @@ async function main() {
     const state = msg.state ?? {};
     const players = state.players ?? [];
 
-    // Ready up as soon as we are connected.
+    // Drive the three gates off state_update broadcasts (not the open handler):
+    // each step's guard reads the latest server-echoed state, so e.g. start_prep
+    // only fires after our own set_ready has come back reflected in `players`.
     if (!readied) {
       readied = true;
       socket.send(JSON.stringify({ type: 'set_ready', ready: true }));
