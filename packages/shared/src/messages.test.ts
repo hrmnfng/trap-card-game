@@ -26,3 +26,25 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(42)).toBeNull();
   });
 });
+
+describe('parseClientMessage — three-stage messages', () => {
+  it('parses set_ready with a boolean', () => {
+    expect(parseClientMessage({ type: 'set_ready', ready: true })).toEqual({
+      type: 'set_ready',
+      ready: true,
+    });
+    expect(parseClientMessage({ type: 'set_ready', ready: 'yes' })).toBeNull();
+  });
+
+  it('parses start_prep', () => {
+    expect(parseClientMessage({ type: 'start_prep' })).toEqual({ type: 'start_prep' });
+  });
+
+  it('parses submit_cards with a string array', () => {
+    expect(
+      parseClientMessage({ type: 'submit_cards', statements: ['a', 'b'] })
+    ).toEqual({ type: 'submit_cards', statements: ['a', 'b'] });
+    expect(parseClientMessage({ type: 'submit_cards', statements: 'a' })).toBeNull();
+    expect(parseClientMessage({ type: 'submit_cards', statements: [1, 2] })).toBeNull();
+  });
+});
