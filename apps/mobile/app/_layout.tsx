@@ -58,6 +58,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ title: 'Trap Card Game' }} />
           <Stack.Screen name="login" options={{ title: 'Sign in' }} />
           <Stack.Screen name="lobby/[code]" options={{ title: 'Lobby' }} />
+          <Stack.Screen name="prep/[code]" options={{ title: 'Author cards' }} />
           <Stack.Screen name="game/[code]" options={{ title: 'Game' }} />
         </Stack>
       </View>

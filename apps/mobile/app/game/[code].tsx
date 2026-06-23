@@ -12,6 +12,7 @@ import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
+import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { Celebration } from '../../src/ui/Celebration';
 
@@ -32,6 +33,13 @@ export default function GameScreen() {
       gameStore.getState().connect({ code, playerId: userId, username });
     }
   }, [code, userId, username, lobbyCode]);
+
+  const me = gameState?.players.find((p) => p.id === userId);
+  useEffect(() => {
+    if (!gameState || !code) return;
+    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
+    if (target !== 'game') router.replace(`/${target}/${code}`);
+  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
@@ -99,7 +107,7 @@ export default function GameScreen() {
             {myCards.map((card: Card, i: number) => (
               <PlayingCard
                 key={card.id}
-                value={card.value}
+                statement={card.statement}
                 index={i}
                 selected={card.id === selectedCardId}
                 onPress={() => setSelectedCardId(card.id === selectedCardId ? null : card.id)}
@@ -120,7 +128,7 @@ export default function GameScreen() {
             .reverse()
             .map((h) => (
               <Text key={h.id} style={styles.historyItem}>
-                {h.playerUsername} played {h.cardValue ?? '?'} on{' '}
+                {h.playerUsername} played "{h.statement ?? '?'}" on{' '}
                 {h.targetUsername ?? 'unknown'}
               </Text>
             ))
