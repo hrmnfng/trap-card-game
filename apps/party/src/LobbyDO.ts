@@ -20,9 +20,12 @@ import {
   createRoomState,
   getGameState,
   getLobbyMembers,
+  setReady,
+  startPrep,
+  submitCards,
+  startGame,
   playCard,
   removePlayer,
-  startGame,
   hasGameEnded,
   getFinishedPlayers,
   type GameRoomState,
@@ -50,12 +53,10 @@ export class LobbyDO extends Server<Env> {
   /** In-memory cache of the room state; source of truth is DO storage. */
   private room: GameRoomState | null = null;
 
-  /** Deterministic-enough rule deps backed by the runtime. */
+  /** Rule deps backed by the runtime. */
   private deps(): RuleDeps {
     return {
       newId: () => crypto.randomUUID(),
-      randomCardValue: (min, max) =>
-        min + Math.floor(Math.random() * (max - min + 1)),
       now: () => new Date().toISOString(),
     };
   }
@@ -244,6 +245,51 @@ export class LobbyDO extends Server<Env> {
         });
         return;
 
+      case 'set_ready': {
+        const res = setReady(room, state.playerId, message.ready, this.deps());
+        if (!res.ok) {
+          this.sendTo(connection, { type: 'error', message: res.error ?? 'set_ready_failed', code: res.error });
+          return;
+        }
+        room = res.state;
+        await this.saveRoom(room);
+        await this.broadcastState(room);
+        return;
+      }
+
+      case 'start_prep': {
+        if (room.ownerId !== state.playerId) {
+          this.sendTo(connection, {
+            type: 'error',
+            message: 'Only the lobby owner can start the game',
+            code: 'not_owner',
+          });
+          return;
+        }
+        const res = startPrep(room);
+        if (!res.ok) {
+          this.sendTo(connection, { type: 'error', message: res.error ?? 'start_prep_failed', code: res.error });
+          return;
+        }
+        room = res.state;
+        await this.saveRoom(room);
+        this.broadcastMessage({ type: 'prep_started' });
+        await this.broadcastState(room);
+        return;
+      }
+
+      case 'submit_cards': {
+        const res = submitCards(room, state.playerId, message.statements, this.deps());
+        if (!res.ok) {
+          this.sendTo(connection, { type: 'error', message: res.error ?? 'submit_failed', code: res.error });
+          return;
+        }
+        room = res.state;
+        await this.saveRoom(room);
+        await this.broadcastState(room);
+        return;
+      }
+
       case 'start_game': {
         if (room.ownerId !== state.playerId) {
           this.sendTo(connection, {
@@ -253,13 +299,9 @@ export class LobbyDO extends Server<Env> {
           });
           return;
         }
-        const res = startGame(room, this.deps());
+        const res = startGame(room);
         if (!res.ok) {
-          this.sendTo(connection, {
-            type: 'error',
-            message: res.error ?? 'start_failed',
-            code: res.error,
-          });
+          this.sendTo(connection, { type: 'error', message: res.error ?? 'start_failed', code: res.error });
           return;
         }
         room = res.state;
@@ -284,18 +326,13 @@ export class LobbyDO extends Server<Env> {
           this.deps()
         );
         if (!res.ok) {
-          this.sendTo(connection, {
-            type: 'error',
-            message: res.error ?? 'invalid_play',
-            code: res.error,
-          });
+          this.sendTo(connection, { type: 'error', message: res.error ?? 'invalid_play', code: res.error });
           return;
         }
         room = res.state;
         await this.saveRoom(room);
 
-        const cardValue =
-          room.events[room.events.length - 1]?.cardValue ?? 0;
+        const statement = room.events[room.events.length - 1]?.statement ?? '';
         const playerUsername = room.usernames[state.playerId] ?? 'Unknown';
         const targetUsername = room.usernames[message.targetPlayerId] ?? 'Unknown';
 
@@ -305,18 +342,16 @@ export class LobbyDO extends Server<Env> {
           playerUsername,
           targetPlayerId: message.targetPlayerId,
           targetUsername,
-          cardValue,
+          statement,
         });
         await this.broadcastState(room);
 
-        // Push the targeted player (even if offline).
         await this.notifyUsers(room, [message.targetPlayerId], {
           title: 'A card was played on you',
-          body: `${playerUsername} played a ${cardValue} against you`,
+          body: `${playerUsername} played "${statement}" on you`,
           data: { kind: 'card_played', lobbyCode: room.lobbyCode },
         });
 
-        // Game end?
         if (hasGameEnded(room)) {
           const concluded: GameRoomState = { ...room, status: 'concluded' };
           await this.saveRoom(concluded);

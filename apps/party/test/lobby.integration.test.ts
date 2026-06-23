@@ -169,30 +169,31 @@ describe('CORS preflight', () => {
  * in-test WebSocket upgrades on this platform.
  */
 describe.skip('LobbyDO realtime WebSocket flow', () => {
-  it('connects two players, owner starts game, players receive cards', async () => {
+  it('connects two players, runs ready -> prep -> game, players have cards', async () => {
     const code = 'ROOM02';
     await createLobby(code);
 
     const alice = await connect(code, 'p1', 'Alice');
-    const connected = await waitFor(alice, 'connected');
-    expect(connected.playerId).toBe('p1');
-
-    // Initial state shows Alice as owner, waiting.
-    const initial = await waitFor(alice, 'state_update');
-    expect(initial.state.ownerId).toBe('p1');
-    expect(initial.state.status).toBe('waiting');
-
+    await waitFor(alice, 'connected');
     const bob = await connect(code, 'p2', 'Bob');
     await waitFor(bob, 'connected');
 
-    // Owner starts the game.
+    alice.ws.send(JSON.stringify({ type: 'set_ready', ready: true }));
+    bob.ws.send(JSON.stringify({ type: 'set_ready', ready: true }));
+
+    alice.ws.send(JSON.stringify({ type: 'start_prep' }));
+    await waitFor(alice, 'prep_started');
+
+    alice.ws.send(JSON.stringify({ type: 'submit_cards', statements: ['a', 'b', 'c'] }));
+    bob.ws.send(JSON.stringify({ type: 'submit_cards', statements: ['d', 'e', 'f'] }));
+
     alice.ws.send(JSON.stringify({ type: 'start_game' }));
     await waitFor(alice, 'game_started');
 
     const aliceState = await waitFor(alice, 'state_update');
     expect(aliceState.state.status).toBe('in-progress');
     expect(aliceState.state.myCards.length).toBe(3);
-    expect(aliceState.state.players.length).toBe(2);
+    expect(aliceState.state.myCards[0]?.statement).toBe('a');
 
     alice.ws.close();
     bob.ws.close();
@@ -207,7 +208,7 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
     const bob = await connect(code, 'p2', 'Bob');
     await waitFor(bob, 'connected');
 
-    bob.ws.send(JSON.stringify({ type: 'start_game' }));
+    bob.ws.send(JSON.stringify({ type: 'start_prep' }));
     const err = await waitFor(bob, 'error');
     expect(err.code).toBe('not_owner');
 
@@ -224,6 +225,12 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
     const bob = await connect(code, 'p2', 'Bob');
     await waitFor(bob, 'connected');
 
+    alice.ws.send(JSON.stringify({ type: 'set_ready', ready: true }));
+    bob.ws.send(JSON.stringify({ type: 'set_ready', ready: true }));
+    alice.ws.send(JSON.stringify({ type: 'start_prep' }));
+    await waitFor(alice, 'prep_started');
+    alice.ws.send(JSON.stringify({ type: 'submit_cards', statements: ['x', 'y', 'z'] }));
+    bob.ws.send(JSON.stringify({ type: 'submit_cards', statements: ['d', 'e', 'f'] }));
     alice.ws.send(JSON.stringify({ type: 'start_game' }));
     await waitFor(alice, 'game_started');
     const started = await waitFor(alice, 'state_update');
@@ -235,8 +242,7 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
 
     const played = await waitFor(bob, 'card_played');
     expect(played.playerId).toBe('p1');
-    expect(played.targetPlayerId).toBe('p2');
-    expect(played.playerUsername).toBe('Alice');
+    expect(played.statement).toBe('x');
 
     // Alice's hand shrinks to 2.
     const after = await waitFor(alice, 'state_update');

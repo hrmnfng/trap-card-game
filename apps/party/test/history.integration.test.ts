@@ -34,7 +34,6 @@ describe('GET /api/lobbies/history', () => {
       'historian',
       {
         newId: () => crypto.randomUUID(),
-        randomCardValue: () => 5,
         now: () => new Date().toISOString(),
       }
     ).state;

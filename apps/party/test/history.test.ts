@@ -15,7 +15,6 @@ const testEnv = env as unknown as Env;
 let seq = 0;
 const deps: RuleDeps = {
   newId: () => `id-${seq++}`,
-  randomCardValue: () => 5,
   now: () => new Date().toISOString(),
 };
 
