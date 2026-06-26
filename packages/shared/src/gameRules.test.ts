@@ -199,7 +199,7 @@ describe('submitCards', () => {
     expect(submitCards(state, 'p1', ['a', 'x'.repeat(101), 'c'], deps).error).toBe('invalid_statement');
   });
 
-  it('rejects submission outside prep / in-progress', () => {
+  it('rejects submission while waiting', () => {
     const deps = createTestDeps();
     const waiting = readyTwo();
     expect(submitCards(waiting, 'p1', ['a', 'b', 'c'], deps).error).toBe('wrong_phase');

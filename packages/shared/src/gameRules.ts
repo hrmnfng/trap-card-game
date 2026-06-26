@@ -156,8 +156,8 @@ export function hasGameStarted(state: GameRoomState): boolean {
 
 /**
  * Add a player to the lobby (idempotent join). The first joiner becomes owner.
- * There is no auto-deal: a mid-game joiner authors and submits their hand via
- * `submitCards` before they can activate anything.
+ * New players may only join while the lobby is `waiting`; once it advances,
+ * joins are locked and only existing members may reconnect.
  */
 export function addPlayer(
   state: GameRoomState,
