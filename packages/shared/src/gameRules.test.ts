@@ -286,7 +286,7 @@ describe('getGameState (per-viewer)', () => {
 
 describe('membership is permanent', () => {
   it('a player who disconnects and reconnects stays a member with their hand', () => {
-    const deps = createTestDeps({ startId: 400 });
+    const deps = createTestDeps();
     let state = startGame(submittedTwoInPrep()).state;
     const handBefore = getPlayerCards(state, 'p1').map((c) => c.id);
 
@@ -297,5 +297,16 @@ describe('membership is permanent', () => {
 
     expect(getLobbyMembers(state).map((m) => m.playerId)).toEqual(['p1', 'p2']);
     expect(getPlayerCards(state, 'p1').map((c) => c.id)).toEqual(handBefore);
+  });
+
+  it('lets an existing member reconnect even when the lobby is at capacity', () => {
+    const deps = createTestDeps();
+    let state = newRoom({ settings: { ...DEFAULT_GAME_SETTINGS, maxPlayers: 2 } });
+    ({ state } = addPlayer(state, 'p1', 'Alice', deps));
+    ({ state } = addPlayer(state, 'p2', 'Bob', deps));
+    expect(isLobbyFull(state)).toBe(true);
+    const res = addPlayer(state, 'p1', 'Alice', deps); // reconnect at capacity
+    expect(res.ok).toBe(true);
+    expect(getLobbyMembers(res.state).map((m) => m.playerId)).toEqual(['p1', 'p2']);
   });
 });

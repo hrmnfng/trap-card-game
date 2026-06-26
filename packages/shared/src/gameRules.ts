@@ -165,15 +165,17 @@ export function addPlayer(
   username: string,
   deps: RuleDeps
 ): RuleResult {
-  if (isLobbyFull(state)) {
-    return { ok: false, state, error: 'lobby_full' };
-  }
-
+  // Existing members may always reconnect (idempotent), even at capacity —
+  // membership is permanent, so the roster count never frees up.
   if (!isPlayerNewToLobby(state, playerId)) {
     return {
       ok: true,
       state: { ...state, usernames: { ...state.usernames, [playerId]: username } },
     };
+  }
+
+  if (isLobbyFull(state)) {
+    return { ok: false, state, error: 'lobby_full' };
   }
 
   const members = getLobbyMembers(state);
