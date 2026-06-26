@@ -441,6 +441,33 @@ export function hasGameEnded(state: GameRoomState): boolean {
   return getFinishedPlayers(state).length > 0;
 }
 
+/**
+ * The first player to empty their hand (the winner), or null if no one has yet.
+ * Determined by the `play_card` event that first reduces a player's remaining
+ * count to zero.
+ */
+export function getWinner(state: GameRoomState): string | null {
+  if (!hasGameStarted(state)) return null;
+  const remaining = new Map<string, number>();
+  for (const m of getLobbyMembers(state)) {
+    remaining.set(m.playerId, getInitialHandSize(state, m.playerId));
+  }
+  for (const ev of state.events) {
+    if (ev.type !== 'play_card') continue;
+    const left = (remaining.get(ev.playerId) ?? 0) - 1;
+    remaining.set(ev.playerId, left);
+    if (left === 0) return ev.playerId;
+  }
+  return null;
+}
+
+/** How many cards a player was dealt (count of their distribute events). */
+function getInitialHandSize(state: GameRoomState, playerId: string): number {
+  return state.events.filter(
+    (ev) => ev.type === 'distribute' && ev.playerId === playerId
+  ).length;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Full per-player state view                                                 */
 /* -------------------------------------------------------------------------- */
@@ -478,6 +505,8 @@ export function getGameState(
   let status: LobbyStatus = state.status;
   if (hasGameEnded(state)) status = 'concluded';
 
+  const winnerId = status === 'concluded' ? getWinner(state) : null;
+
   return {
     lobbyId: state.lobbyId,
     lobbyCode: state.lobbyCode,
@@ -487,5 +516,7 @@ export function getGameState(
     players,
     myCards: getPlayerCards(state, viewerId),
     gameHistory: getGameHistory(state),
+    winnerId,
+    winnerUsername: winnerId ? state.usernames[winnerId] ?? null : null,
   };
 }

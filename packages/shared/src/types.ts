@@ -108,6 +108,9 @@ export interface GameState {
   players: PlayerView[];
   myCards: Card[];
   gameHistory: GameHistoryItem[];
+  /** First player to empty their hand; populated only when `concluded`. */
+  winnerId: string | null;
+  winnerUsername: string | null;
 }
 
 /** A lobby member registered in a Durable Object. */

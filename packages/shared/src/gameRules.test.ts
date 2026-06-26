@@ -301,6 +301,22 @@ describe('getGameState (per-viewer)', () => {
   });
 });
 
+describe('winner (first to empty hand)', () => {
+  it('names the first player to empty as winner only when concluded', () => {
+    const deps = createTestDeps({ startId: 500 });
+    let state = startGame(submittedTwoInPrep()).state;
+    expect(getGameState(state, 'p1').winnerId).toBeNull();
+
+    for (const card of getPlayerCards(state, 'p1')) {
+      ({ state } = playCard(state, 'p1', card.id, 'p2', deps));
+    }
+    const view = getGameState(state, 'p2');
+    expect(view.status).toBe('concluded');
+    expect(view.winnerId).toBe('p1');
+    expect(view.winnerUsername).toBe('Alice');
+  });
+});
+
 describe('membership is permanent', () => {
   it('a player who disconnects and reconnects stays a member with their hand', () => {
     const deps = createTestDeps();

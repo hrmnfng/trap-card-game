@@ -69,7 +69,6 @@ export type ServerMessageType =
   | 'connected'
   | 'state_update'
   | 'player_joined'
-  | 'player_left'
   | 'prep_started'
   | 'game_started'
   | 'card_played'
@@ -90,12 +89,6 @@ export interface StateUpdateMessage {
 
 export interface PlayerJoinedMessage {
   type: 'player_joined';
-  playerId: string;
-  username: string;
-}
-
-export interface PlayerLeftMessage {
-  type: 'player_left';
   playerId: string;
   username: string;
 }
@@ -121,6 +114,9 @@ export interface GameEndedMessage {
   type: 'game_ended';
   /** Player ids that ran out of cards (triggered the end). */
   finishedPlayerIds: string[];
+  /** First player to empty their hand. */
+  winnerId: string | null;
+  winnerUsername: string | null;
 }
 
 export interface ErrorMessage {
@@ -137,7 +133,6 @@ export type ServerMessage =
   | ConnectedMessage
   | StateUpdateMessage
   | PlayerJoinedMessage
-  | PlayerLeftMessage
   | PrepStartedMessage
   | GameStartedMessage
   | CardPlayedMessage
