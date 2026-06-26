@@ -2,6 +2,31 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ## ⏸ Resumption status (updated 2026-06-26)
+>
+> Executed via subagent-driven development, per-task TDD (each task: red→green, lint + typecheck, commit). **Tasks 1–6 are DONE, reviewed, and committed; the shared, party, and mobile-store layers are green.** Remaining: Tasks 7–11.
+>
+> **Done (commits on `feat/user-authored-trap-cards`):**
+> - Task 1 — shared: permanent membership, remove `leave`/`removePlayer` — `1def97c` (+ fix `835af1f`: existing members reconnect at capacity)
+> - Task 2 — shared: live presence `isOnline` — `a2a2618`
+> - Task 3 — shared: lock new joins after `waiting`; submit only in `prep` — `0c3f1db` (+ doc `0c528fd`)
+> - Task 4 — shared: winner (first to empty); drop `player_left` message — `b5f9bec`
+> - Task 5 — party DO: `onClose` presence-only, online-set threading, join lock, winner on `game_ended` — `05dd32e` (+ comments `9e24d4e`)
+> - Task 6 — mobile store: `exit()` rename, winner passthrough, drop `player_left`, clear `error` on valid state — `daf0129`
+>
+> All three workspaces currently: `@trap/shared` green (47 tests), `@trap/party` green (45 pass / 6 WS-skip), `@trap/mobile` green (38 tests, typecheck clean).
+>
+> **Remaining (NOT started):**
+> - **Task 7** — mobile UI: presence dots (lobby/prep), winner banner + read-only-concluded game screen (I12), derive end view from `status === 'concluded'` + `winnerId` (not the transient `gameEnded` flag).
+> - **Task 8** — I6 regression test (error clears on next valid state — the logic already landed in Task 6; this just adds the dedicated test).
+> - **Task 9** — I7: `unreachable` connection status via an 8s connect timeout in `realtime.ts` + friendlier lobby status text.
+> - **Task 10** — I10′: shared `Screen` safe-area wrapper applied to all 5 routes.
+> - **Task 11** — tier-3 validation: Android Maestro device gate + two-device LAN matrix (esp. reconnection rows R2–R4, winner R7, safe-area R8). Web e2e (`apps/mobile/e2e/multiplayer.spec.ts`) should also be extended to assert no membership loss on reconnect + winner shown.
+>
+> **Known minor follow-ups (non-blocking):** Task 6 left two slightly redundant store tests and `exit()` doesn't reset `playerId` (pre-existing). Task 4 left `winnerUsername` without a JSDoc line. Optional cleanup.
+>
+> **Out of scope this round (documented):** I2 (deploy/Phase B), I9 (push/Dev Build — un-testable on LAN+Expo Go), I5 (owner-offline stall), 7-day lobby-inactivity expiry.
+
 **Goal:** Make two clients play a full trap-card game across realistic mobile lifecycle (background, force-quit, re-entry) without losing players, spamming "left" events, getting stuck, or ending with no result — by correcting the membership/presence model and closing the P0+P1 gameplay gaps.
 
 **Architecture:** Event-sourced rules in `@trap/shared` stay the single source of truth. Membership becomes **permanent** (the `leave` concept is removed); **presence** ("online") is derived live from open WebSocket connections at broadcast time; lobbies **lock to new joiners** once they leave `waiting`; the game exposes a **winner** (first to empty hand). The Durable Object and Expo client are rewired to match, plus client-only fixes for transient errors, connect timeouts, and safe-area layout.
