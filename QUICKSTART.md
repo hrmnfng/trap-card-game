@@ -165,4 +165,4 @@ After login on the device, confirm `POST /api/devices` registers a token
 ## Next steps
 
 The remaining roadmap (local validation gate, Cloudflare provisioning, cutover, and
-deferred graphics polish) lives in `plans/remaining-work.md`.
+deferred graphics polish) lives in `plans/2026-06-21-remaining-work.md`.

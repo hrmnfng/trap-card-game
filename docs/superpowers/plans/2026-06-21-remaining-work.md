@@ -232,7 +232,7 @@ passes** (and ideally Phase B is deployed).
 **Files:**
 - Delete: `frontend/`, `backend/`, `docker-compose.yml`
 - Modify: `README.md`, `QUICKSTART.md`
-- Reference: `AGENTS.md` (already refreshed), `plans/migration-expo-cloudflare.md`
+- Reference: `AGENTS.md` (already refreshed), `plans/2026-06-21-migration-expo-cloudflare.md`
 
 - [ ] **Step C1: Confirm nothing in the new stack imports the legacy code.**
 

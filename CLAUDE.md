@@ -10,14 +10,14 @@ Trap Card Game — a multiplayer card game on an npm-workspace monorepo:
 - `apps/party` — Cloudflare Worker + PartyServer Durable Object (`LobbyDO`), backed by D1 + KV.
 - `packages/shared` (`@trap/shared`) — single source of truth for types, the WebSocket message contract, and the pure, deterministic game rules.
 
-The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks have been removed (Phase 6 cutover landed); remaining work is deployment + polish (see `plans/remaining-work.md`).
+The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks have been removed (Phase 6 cutover landed); remaining work is deployment + polish (see `plans/2026-06-21-remaining-work.md`).
 
 ## Read first
 
 - **`AGENTS.md`** — conventions, gotchas, and resolved confusion points (PartyServer
   addressing, the workers test-pool limits, the Expo-free mobile core). Read before editing.
-- **`plans/migration-expo-cloudflare.md`** — the overall migration plan and status.
-- **`plans/remaining-work.md`** — the executable plan for what's left.
+- **`plans/2026-06-21-migration-expo-cloudflare.md`** — the overall migration plan and status.
+- **`plans/2026-06-21-remaining-work.md`** — the executable plan for what's left.
 
 ## Commands
 

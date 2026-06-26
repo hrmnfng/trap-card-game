@@ -672,7 +672,7 @@ git commit -m "feat(mobile): list your lobbies on Home with rejoin"
 ### Task 8: Update the remaining-work plan
 
 **Files:**
-- Modify: `plans/remaining-work.md`
+- Modify: `plans/2026-06-21-remaining-work.md`
 
 - [ ] **Step 1: Note the feature.** Under Phase A (or a new "Feature gaps found during validation" note), record that lobby history was implemented (DO → D1 → `GET /api/lobbies/history` → Home list), with a pointer to `docs/superpowers/specs/2026-06-10-lobby-history-design.md`. Keep it to a few lines consistent with the file's style.
 
@@ -684,7 +684,7 @@ Expected: shared + party + mobile all green (party 4 skipped unchanged).
 - [ ] **Step 3: Commit (after approval).**
 
 ```bash
-git add plans/remaining-work.md
+git add plans/2026-06-21-remaining-work.md
 git commit -m "docs: record lobby-history feature in remaining-work plan"
 ```
 

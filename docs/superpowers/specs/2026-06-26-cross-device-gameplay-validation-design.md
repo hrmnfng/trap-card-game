@@ -139,7 +139,7 @@ Three layers, cheapest first:
 3. **Unit tests (`apps/mobile`)** — store/realtime reducers for sticky error (I6) and connect
    timeout (I7).
 4. **Manual two-device LAN matrix** — Hermes-only and visual items (I10′), plus a human pass of the
-   reconnection and game-over flows. Extends Phase A4 rows 7–8 in `remaining-work.md`.
+   reconnection and game-over flows. Extends Phase A4 rows 7–8 in `2026-06-21-remaining-work.md`.
 
 ### Per-issue validation
 
@@ -207,7 +207,7 @@ renders inside a safe-area wrapper once the fix lands.)
 ### Manual two-device LAN test matrix
 
 Setup: `wrangler dev` on the dev box; `apps/mobile/.env` points at the LAN IP; two clients
-(two phones in Expo Go, or one phone + the web build). Extends `remaining-work.md` Phase A4.
+(two phones in Expo Go, or one phone + the web build). Extends `2026-06-21-remaining-work.md` Phase A4.
 
 | Row | Step | Expected (corrected model) |
 |-----|------|----------------------------|

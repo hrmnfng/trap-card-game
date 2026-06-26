@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * End-to-end (browser) tests for the Expo **web** build, driving the real
  * Cloudflare Worker + Durable Object over HTTP + WebSocket. This automates the
- * Phase A4 manual matrix (see `plans/remaining-work.md`).
+ * Phase A4 manual matrix (see `plans/2026-06-21-remaining-work.md`).
  *
  * Playwright owns both services via `webServer`:
  *   1. the Worker — `wrangler dev` on :8787 (schema applied first on a cold

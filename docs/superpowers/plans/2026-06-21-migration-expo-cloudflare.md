@@ -33,7 +33,7 @@ lives on branch `feat/game-mechanics` (committed + pushed).
   the global `fetch` as a free function (browser WebIDL `this`-binding). Both are
   documented in `AGENTS.md`.
 - **Status:** Phase A's device/UI pass (A4) is still the outstanding gate; Phases
-  B (deploy) and C (cutover) follow. See `plans/remaining-work.md`.
+  B (deploy) and C (cutover) follow. See `plans/2026-06-21-remaining-work.md`.
 
 ### Phase 4b resolution (2026-06-09)
 

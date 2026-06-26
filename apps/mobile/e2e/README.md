@@ -2,7 +2,7 @@
 
 Browser tests that drive the Expo **web** build against a real local Cloudflare
 Worker + Durable Object (HTTP + WebSocket). They automate the Phase A4 manual
-matrix from `plans/remaining-work.md`.
+matrix from `plans/2026-06-21-remaining-work.md`.
 
 ## Run
 
