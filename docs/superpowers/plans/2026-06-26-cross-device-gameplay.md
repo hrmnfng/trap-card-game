@@ -280,7 +280,7 @@ Expected: FAIL — `addPlayer` still admits `p3`; `submitCards` still allows `in
 
 - [ ] **Step 3: Lock joins in `addPlayer`**
 
-In `packages/shared/src/gameRules.ts`, in `addPlayer`, after the `isLobbyFull` check and before the `isPlayerNewToLobby` early-return, add the lock (new players only):
+In `packages/shared/src/gameRules.ts`, `addPlayer` already (after Task 1's fix) returns early for an existing member BEFORE the `isLobbyFull` check. Add the new-player lock between the existing-member return and the `isLobbyFull` check, so the guard order is: existing-member reconnect → joins-locked (new + not waiting) → lobby-full → clash → append. Replace the top of `addPlayer` with:
 
 ```ts
 export function addPlayer(
@@ -289,21 +289,22 @@ export function addPlayer(
   username: string,
   deps: RuleDeps
 ): RuleResult {
-  if (isLobbyFull(state)) {
-    return { ok: false, state, error: 'lobby_full' };
-  }
-
-  // Existing members may always reconnect (idempotent). New players may only
-  // join while the lobby is still gathering (waiting).
-  if (isPlayerNewToLobby(state, playerId)) {
-    if (state.status !== 'waiting') {
-      return { ok: false, state, error: 'joins_locked' };
-    }
-  } else {
+  // Existing members may always reconnect (idempotent), even at capacity —
+  // membership is permanent, so the roster count never frees up.
+  if (!isPlayerNewToLobby(state, playerId)) {
     return {
       ok: true,
       state: { ...state, usernames: { ...state.usernames, [playerId]: username } },
     };
+  }
+
+  // New players may only join while the lobby is still gathering (waiting).
+  if (state.status !== 'waiting') {
+    return { ok: false, state, error: 'joins_locked' };
+  }
+
+  if (isLobbyFull(state)) {
+    return { ok: false, state, error: 'lobby_full' };
   }
 
   const members = getLobbyMembers(state);

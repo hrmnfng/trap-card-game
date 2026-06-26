@@ -125,6 +125,8 @@ export class LobbyDO extends Server<Env> {
       const room = await this.loadRoom();
       if (!room) return json({ error: 'not_found' }, 404);
       const playerId = url.searchParams.get('playerId') ?? '';
+      // HTTP pull read: no live WS context, so every player shows isOnline:false
+      // (acceptable for a non-realtime state fetch).
       return json(getGameState(room, playerId));
     }
 
@@ -375,6 +377,9 @@ export class LobbyDO extends Server<Env> {
     // Membership is permanent — a closed socket is only a presence change.
     // Re-broadcast state so everyone sees the player go offline. No leave, no push.
     const room = await this.loadRoom();
+    // Cloudflare excludes the closing WS from getConnections() before calling
+    // onClose, so onlinePlayerIds() correctly omits the disconnecting player and
+    // the broadcast reflects them as offline.
     if (room) await this.broadcastState(room);
   }
 
