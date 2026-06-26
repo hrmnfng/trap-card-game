@@ -68,13 +68,20 @@ describe('createRoomState', () => {
 });
 
 describe('membership', () => {
-  it('mid-game join does NOT auto-deal (must submitCards first)', () => {
-    const room = submittedTwoInPrep();
+  it('locks new joins once the lobby has left waiting', () => {
     const deps = createTestDeps({ startId: 100 });
-    const started = startGame(room).state;
+    const started = startGame(submittedTwoInPrep()).state;
     const res = addPlayer(started, 'p3', 'Cara', deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('joins_locked');
+  });
+
+  it('still accepts an existing member reconnecting after lock', () => {
+    const deps = createTestDeps({ startId: 150 });
+    const started = startGame(submittedTwoInPrep()).state;
+    const res = addPlayer(started, 'p1', 'Alice', deps);
     expect(res.ok).toBe(true);
-    expect(getPlayerCards(res.state, 'p3')).toHaveLength(0); // must submit first
+    expect(getLobbyMembers(res.state).map((m) => m.playerId)).toEqual(['p1', 'p2']);
   });
 
   it('rejects a different player taking an existing username', () => {
@@ -198,13 +205,13 @@ describe('submitCards', () => {
     expect(submitCards(waiting, 'p1', ['a', 'b', 'c'], deps).error).toBe('wrong_phase');
   });
 
-  it('allows a mid-game joiner to submit while in-progress', () => {
-    const deps = createTestDeps({ startId: 200 });
-    let state = startGame(submittedTwoInPrep()).state;
-    ({ state } = addPlayer(state, 'p3', 'Cara', deps));
-    const res = submitCards(state, 'p3', ['x', 'y', 'z'], deps);
-    expect(res.ok).toBe(true);
-    expect(getPlayerCards(res.state, 'p3')).toHaveLength(3);
+  it('rejects submission outside prep (in-progress is not allowed)', () => {
+    const deps = createTestDeps();
+    const inProgress = startGame(submittedTwoInPrep()).state;
+    // Phase guard fires first — in-progress is wrong phase regardless of prior submission.
+    const res = submitCards(inProgress, 'p1', ['x', 'y', 'z'], deps);
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('wrong_phase');
   });
 });
 

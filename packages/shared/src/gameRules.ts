@@ -174,6 +174,11 @@ export function addPlayer(
     };
   }
 
+  // New players may only join while the lobby is still gathering (waiting).
+  if (state.status !== 'waiting') {
+    return { ok: false, state, error: 'joins_locked' };
+  }
+
   if (isLobbyFull(state)) {
     return { ok: false, state, error: 'lobby_full' };
   }
@@ -282,8 +287,7 @@ export function getSubmittedPlayers(state: GameRoomState): string[] {
 }
 
 /**
- * Submit a full, locked hand of authored statements. Allowed in `prep` (the
- * normal path) or `in-progress` (a mid-game joiner who has not yet submitted).
+ * Submit a full, locked hand of authored statements. Allowed only in `prep`.
  * Appends one `distribute` event per trimmed statement.
  */
 export function submitCards(
@@ -292,7 +296,7 @@ export function submitCards(
   statements: string[],
   deps: RuleDeps
 ): RuleResult {
-  if (state.status !== 'prep' && state.status !== 'in-progress') {
+  if (state.status !== 'prep') {
     return { ok: false, state, error: 'wrong_phase' };
   }
   if (hasPlayerSubmitted(state, playerId)) {
