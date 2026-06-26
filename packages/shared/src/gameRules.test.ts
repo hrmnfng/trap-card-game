@@ -272,6 +272,16 @@ describe('getGameState (per-viewer)', () => {
     expect(view.myCards.every((c) => c.ownerId === 'p1')).toBe(true);
   });
 
+  it('marks players online from the supplied connected set (default offline)', () => {
+    const state = startGame(submittedTwoInPrep()).state;
+    const offline = getGameState(state, 'p1');
+    expect(offline.players.every((p) => p.isOnline === false)).toBe(true);
+
+    const online = getGameState(state, 'p1', new Set(['p1']));
+    expect(online.players.find((p) => p.id === 'p1')?.isOnline).toBe(true);
+    expect(online.players.find((p) => p.id === 'p2')?.isOnline).toBe(false);
+  });
+
   it('reflects ready/submit flags during earlier stages', () => {
     const deps = createTestDeps();
     let { state } = addPlayer(newRoom(), 'p1', 'Alice', deps);

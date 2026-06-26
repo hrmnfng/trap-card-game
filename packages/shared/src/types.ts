@@ -77,6 +77,8 @@ export interface PlayerView {
   cardsRemaining: number;
   isReady: boolean;
   hasSubmitted: boolean;
+  /** Live presence — has an open socket right now (transient, not persisted). */
+  isOnline: boolean;
 }
 
 /** A play action surfaced in the game history feed. */

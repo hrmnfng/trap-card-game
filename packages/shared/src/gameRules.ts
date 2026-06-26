@@ -456,7 +456,11 @@ export function getGameHistory(state: GameRoomState): GameHistoryItem[] {
     }));
 }
 
-export function getGameState(state: GameRoomState, viewerId: string): GameState {
+export function getGameState(
+  state: GameRoomState,
+  viewerId: string,
+  onlinePlayerIds: ReadonlySet<string> = new Set()
+): GameState {
   const members = getLobbyMembers(state);
   const players: PlayerView[] = members.map((m) => ({
     id: m.playerId,
@@ -464,6 +468,7 @@ export function getGameState(state: GameRoomState, viewerId: string): GameState 
     cardsRemaining: getRemainingCardsCount(state, m.playerId),
     isReady: isPlayerReady(state, m.playerId),
     hasSubmitted: hasPlayerSubmitted(state, m.playerId),
+    isOnline: onlinePlayerIds.has(m.playerId),
   }));
 
   let status: LobbyStatus = state.status;
