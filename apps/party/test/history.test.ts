@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest';
 import {
   addPlayer,
   createRoomState,
-  removePlayer,
   type GameRoomState,
   type RuleDeps,
 } from '@trap/shared';
@@ -63,18 +62,18 @@ describe('lobby history persistence', () => {
     expect(alice[0]?.status).toBe('in-progress');
   });
 
-  it('updates status to concluded for a player who already left', async () => {
+  it('updates status to concluded for all permanent members', async () => {
     let room = roomWithTwo('BBB222');
     await recordLobbyHistory(testEnv, room); // waiting
-    room = removePlayer(room, 'p2', deps); // p2 leaves (still in usernames)
+    // Membership is permanent — no removePlayer. Conclude the room directly.
     room = { ...room, status: 'concluded' };
     await recordLobbyHistory(testEnv, room);
 
     const bob = await listLobbyHistory(testEnv, 'p2');
     expect(bob).toHaveLength(1);
     expect(bob[0]?.status).toBe('concluded');
-    // p2 is no longer a current member, so the count reflects who remains.
-    expect(bob[0]?.playerCount).toBe(1);
+    // Both players are permanent members, so the count reflects both.
+    expect(bob[0]?.playerCount).toBe(2);
   });
 
   it('preserves joined_at across updates', async () => {

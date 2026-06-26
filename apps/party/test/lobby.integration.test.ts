@@ -262,4 +262,29 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
     await waitFor(alice, 'pong');
     alice.ws.close();
   });
+
+  it('keeps membership on reconnect and never emits player_left', async () => {
+    const code = 'ROOM07';
+    await createLobby(code);
+    const alice = await connect(code, 'p1', 'Alice');
+    await waitFor(alice, 'connected');
+    const bob = await connect(code, 'p2', 'Bob');
+    await waitFor(bob, 'connected');
+
+    const seen: string[] = [];
+    bob.ws.addEventListener('message', (e: MessageEvent) => {
+      seen.push(JSON.parse(e.data as string).type);
+    });
+
+    alice.ws.close();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(seen).not.toContain('player_left');
+
+    const alice2 = await connect(code, 'p1', 'Alice');
+    const reconnected = await waitFor(alice2, 'state_update');
+    expect(reconnected.state.players.map((p: { id: string }) => p.id).sort()).toEqual(['p1', 'p2']);
+
+    alice2.ws.close();
+    bob.ws.close();
+  });
 });

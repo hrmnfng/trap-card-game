@@ -25,9 +25,9 @@ import {
   submitCards,
   startGame,
   playCard,
-  removePlayer,
   hasGameEnded,
   getFinishedPlayers,
+  getWinner,
   type GameRoomState,
   type RuleDeps,
 } from '@trap/shared';
@@ -155,18 +155,9 @@ export class LobbyDO extends Server<Env> {
 
     let room = await this.ensureRoom();
 
-    // Reject connections to a concluded lobby.
-    if (room.status === 'concluded') {
-      this.sendTo(connection, {
-        type: 'error',
-        message: 'Lobby is not active',
-        code: 'lobby_inactive',
-      });
-      connection.close(4003, 'Lobby not active');
-      return;
-    }
-
-    // Register the player (idempotent). New players may broadcast a join.
+    // Register the player (idempotent). New players are rejected with
+    // joins_locked once the lobby has left waiting; existing members (including
+    // into a concluded lobby) are admitted for read-only access.
     const wasNew = !room.usernames[playerId];
     const result = addPlayer(room, playerId, username, this.deps());
     if (!result.ok) {
@@ -189,7 +180,10 @@ export class LobbyDO extends Server<Env> {
       playerId,
       lobbyCode: room.lobbyCode,
     });
-    this.sendTo(connection, { type: 'state_update', state: getGameState(room, playerId) });
+    this.sendTo(connection, {
+      type: 'state_update',
+      state: getGameState(room, playerId, this.onlinePlayerIds()),
+    });
 
     if (wasNew) {
       this.broadcastMessage(
@@ -241,7 +235,7 @@ export class LobbyDO extends Server<Env> {
       case 'get_state':
         this.sendTo(connection, {
           type: 'state_update',
-          state: getGameState(room, state.playerId),
+          state: getGameState(room, state.playerId, this.onlinePlayerIds()),
         });
         return;
 
@@ -355,9 +349,12 @@ export class LobbyDO extends Server<Env> {
         if (hasGameEnded(room)) {
           const concluded: GameRoomState = { ...room, status: 'concluded' };
           await this.saveRoom(concluded);
+          const winnerId = getWinner(concluded);
           this.broadcastMessage({
             type: 'game_ended',
             finishedPlayerIds: getFinishedPlayers(concluded),
+            winnerId,
+            winnerUsername: winnerId ? concluded.usernames[winnerId] ?? null : null,
           });
           await this.broadcastState(concluded);
           await recordLobbyHistory(this.env, concluded);
@@ -375,33 +372,10 @@ export class LobbyDO extends Server<Env> {
   override async onClose(connection: Connection<ConnState>): Promise<void> {
     const state = connection.state;
     if (!state) return;
-
-    // Only treat as a true leave if the player has no other open connections.
-    let stillConnected = false;
-    for (const c of this.getConnections<ConnState>()) {
-      if (c.id !== connection.id && c.state?.playerId === state.playerId) {
-        stillConnected = true;
-        break;
-      }
-    }
-    if (stillConnected) return;
-
-    let room = await this.loadRoom();
-    if (!room) return;
-    room = removePlayer(room, state.playerId, this.deps());
-    await this.saveRoom(room);
-
-    this.broadcastMessage({
-      type: 'player_left',
-      playerId: state.playerId,
-      username: state.username,
-    });
-    await this.notifyOthers(room, state.playerId, {
-      title: 'Player left',
-      body: `${state.username} left the lobby`,
-      data: { kind: 'player_left', lobbyCode: room.lobbyCode },
-    });
-    await this.broadcastState(room);
+    // Membership is permanent — a closed socket is only a presence change.
+    // Re-broadcast state so everyone sees the player go offline. No leave, no push.
+    const room = await this.loadRoom();
+    if (room) await this.broadcastState(room);
   }
 
   /* ----------------------------------------------------------------------- */
@@ -416,14 +390,25 @@ export class LobbyDO extends Server<Env> {
     this.broadcast(JSON.stringify(message), exclude);
   }
 
+  /** Player ids with at least one open connection right now. */
+  private onlinePlayerIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const c of this.getConnections<ConnState>()) {
+      const pid = c.state?.playerId;
+      if (pid) ids.add(pid);
+    }
+    return ids;
+  }
+
   /** Send each connected player their own per-player filtered state. */
   private async broadcastState(room: GameRoomState): Promise<void> {
+    const online = this.onlinePlayerIds();
     for (const connection of this.getConnections<ConnState>()) {
       const playerId = connection.state?.playerId;
       if (!playerId) continue;
       this.sendTo(connection, {
         type: 'state_update',
-        state: getGameState(room, playerId),
+        state: getGameState(room, playerId, online),
       });
     }
   }
