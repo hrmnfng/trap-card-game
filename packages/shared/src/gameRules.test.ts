@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   createRoomState,
   addPlayer,
-  removePlayer,
   setReady,
   isPlayerReady,
   getReadyPlayers,
@@ -15,7 +14,6 @@ import {
   getPlayerCards,
   getRemainingCardsCount,
   getLobbyMembers,
-  getLobbyPlayerCount,
   isLobbyFull,
   hasGameStarted,
   hasGameEnded,
@@ -286,12 +284,18 @@ describe('getGameState (per-viewer)', () => {
   });
 });
 
-describe('removePlayer', () => {
-  it('drops the member from the roster', () => {
-    const deps = createTestDeps();
-    let state = readyTwo();
-    state = removePlayer(state, 'p2', deps);
-    expect(getLobbyPlayerCount(state)).toBe(1);
-    expect(getLobbyMembers(state)[0]?.playerId).toBe('p1');
+describe('membership is permanent', () => {
+  it('a player who disconnects and reconnects stays a member with their hand', () => {
+    const deps = createTestDeps({ startId: 400 });
+    let state = startGame(submittedTwoInPrep()).state;
+    const handBefore = getPlayerCards(state, 'p1').map((c) => c.id);
+
+    // Simulate a reconnect: addPlayer is called again for an existing member.
+    const res = addPlayer(state, 'p1', 'Alice', deps);
+    expect(res.ok).toBe(true);
+    state = res.state;
+
+    expect(getLobbyMembers(state).map((m) => m.playerId)).toEqual(['p1', 'p2']);
+    expect(getPlayerCards(state, 'p1').map((c) => c.id)).toEqual(handBefore);
   });
 });

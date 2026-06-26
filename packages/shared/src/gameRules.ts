@@ -128,22 +128,18 @@ export function isPlayerNewToLobby(
 
 export function getLobbyMembers(state: GameRoomState): LobbyMember[] {
   const order: string[] = [];
-  const present = new Map<string, string>();
+  const joinedAt = new Map<string, string>();
   for (const ev of state.events) {
-    if (ev.type === 'join') {
-      if (!present.has(ev.playerId)) order.push(ev.playerId);
-      present.set(ev.playerId, ev.timestamp);
-    } else if (ev.type === 'leave') {
-      present.delete(ev.playerId);
+    if (ev.type === 'join' && !joinedAt.has(ev.playerId)) {
+      order.push(ev.playerId);
+      joinedAt.set(ev.playerId, ev.timestamp);
     }
   }
-  return order
-    .filter((id) => present.has(id))
-    .map((id) => ({
-      playerId: id,
-      username: state.usernames[id] ?? 'Unknown',
-      joinedAt: present.get(id)!,
-    }));
+  return order.map((id) => ({
+    playerId: id,
+    username: state.usernames[id] ?? 'Unknown',
+    joinedAt: joinedAt.get(id)!,
+  }));
 }
 
 export function getLobbyPlayerCount(state: GameRoomState): number {
@@ -202,19 +198,6 @@ export function addPlayer(
     timestamp: deps.now(),
   });
   return { ok: true, state: next };
-}
-
-export function removePlayer(
-  state: GameRoomState,
-  playerId: string,
-  deps: RuleDeps
-): GameRoomState {
-  return appendEvent(state, {
-    id: deps.newId(),
-    type: 'leave',
-    playerId,
-    timestamp: deps.now(),
-  });
 }
 
 /* -------------------------------------------------------------------------- */

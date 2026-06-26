@@ -22,7 +22,6 @@ export type CardStatus = 'hidden' | 'revealed';
 /** Game action kinds recorded in the event log. */
 export type GameActionType =
   | 'join'
-  | 'leave'
   | 'set_ready'
   | 'distribute'
   | 'play_card';
