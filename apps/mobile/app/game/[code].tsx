@@ -62,7 +62,7 @@ export default function GameScreen() {
   };
 
   const leave = () => {
-    gameStore.getState().leave();
+    gameStore.getState().exit();
     router.replace('/');
   };
 

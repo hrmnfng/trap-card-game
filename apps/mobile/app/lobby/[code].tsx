@@ -64,7 +64,7 @@ export default function LobbyScreen() {
   const iAmReady = me?.isReady ?? false;
 
   const leave = () => {
-    gameStore.getState().leave();
+    gameStore.getState().exit();
     router.replace('/');
   };
 

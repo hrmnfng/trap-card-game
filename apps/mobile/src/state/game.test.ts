@@ -45,9 +45,11 @@ const sampleState: GameState = {
   status: 'in-progress',
   ownerId: 'p1',
   cardsPerPlayer: 3,
-  players: [{ id: 'p1', username: 'Alice', cardsRemaining: 3, isReady: true, hasSubmitted: true }],
+  players: [{ id: 'p1', username: 'Alice', cardsRemaining: 3, isReady: true, hasSubmitted: true, isOnline: true }],
   myCards: [{ id: 'c1', statement: null, status: 'hidden', ownerId: 'p1' }],
   gameHistory: [],
+  winnerId: null,
+  winnerUsername: null,
 };
 
 describe('game store', () => {
@@ -100,8 +102,8 @@ describe('game store', () => {
     const { store, fake } = setup();
     store.getState().connect({ code: 'ROOM1', playerId: 'p1', username: 'Alice' });
 
-    fake.emitMessage({ type: 'game_ended', finishedPlayerIds: ['p1'] });
-    expect(store.getState().gameEnded).toEqual({ finishedPlayerIds: ['p1'] });
+    fake.emitMessage({ type: 'game_ended', finishedPlayerIds: ['p1'], winnerId: 'p1', winnerUsername: 'Alice' });
+    expect(store.getState().gameEnded).toEqual({ finishedPlayerIds: ['p1'], winnerId: 'p1', winnerUsername: 'Alice' });
 
     fake.emitMessage({ type: 'error', message: 'not_owner', code: 'not_owner' });
     expect(store.getState().error).toBe('not_owner');
@@ -120,16 +122,35 @@ describe('game store', () => {
     ]);
   });
 
-  it('leave closes the connection and resets state', () => {
+  it('exit closes the connection and resets state', () => {
     const { store, fake } = setup();
     store.getState().connect({ code: 'ROOM1', playerId: 'p1', username: 'Alice' });
     fake.emitMessage({ type: 'state_update', state: sampleState });
 
-    store.getState().leave();
+    store.getState().exit();
 
     expect(fake.close).toHaveBeenCalledTimes(1);
     expect(store.getState().connectionStatus).toBe('idle');
     expect(store.getState().lobbyCode).toBeNull();
     expect(store.getState().gameState).toBeNull();
+  });
+
+  it('exposes exit() that disconnects and resets local state', () => {
+    const { store } = setup();
+    store.getState().connect({ code: 'ABC1', playerId: 'p1', username: 'A' });
+    store.getState().exit();
+    expect(store.getState().lobbyCode).toBeNull();
+    expect(store.getState().connectionStatus).toBe('idle');
+  });
+
+  it('stores the winner from game_ended', () => {
+    const { store, fake } = setup();
+    store.getState().connect({ code: 'ABC1', playerId: 'p1', username: 'A' });
+    fake.emitMessage({ type: 'game_ended', finishedPlayerIds: ['p1'], winnerId: 'p1', winnerUsername: 'A' });
+    expect(store.getState().gameEnded).toEqual({
+      finishedPlayerIds: ['p1'],
+      winnerId: 'p1',
+      winnerUsername: 'A',
+    });
   });
 });
