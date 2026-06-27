@@ -38,7 +38,11 @@ First run is slow (Metro's initial web bundle); subsequent runs are ~8s.
   no Start control; both players ready up, the owner starts prep, each authors
   and submits 3 statements, the owner begins the game → each has a 3-card hand,
   and a played card surfaces its statement on both clients (hand count drops,
-  history shows on both).
+  history shows on both). Then it covers the cross-device guarantees: the guest
+  **exits the game and re-enters from Home** with their hand and roster intact
+  (permanent membership / reconnection over a real socket close+reopen), and the
+  host **empties their hand** so both clients show the winner banner naming the
+  first-to-empty.
 
 ## Web-build gotchas (baked into `helpers.ts`)
 

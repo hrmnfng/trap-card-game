@@ -96,7 +96,10 @@ a dev build (see §3).
 
 Register a user; create a lobby on client 1; open the same code on client 2 (or tap
 it under "Your lobbies"); start the game (owner, 2+ players); play a card and watch
-both update. The game ends when a player who has played runs out of cards.
+both update. Membership is permanent — exiting a screen only drops you offline (a
+grey/green presence dot), and you can rejoin anytime from "Your lobbies" without
+losing your hand. The game ends when a player who has played runs out of cards; the
+first to empty their hand is named the winner on both clients.
 
 ## 2. Verify
 
