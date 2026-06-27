@@ -121,6 +121,7 @@ export default function PrepScreen() {
           renderItem={({ item }) => (
             <View style={styles.playerRow}>
               <Text style={styles.playerName}>
+                {item.isOnline ? '🟢 ' : '⚪ '}
                 {item.username}
                 {item.id === userId ? '  (you)' : ''}
               </Text>

@@ -23,7 +23,6 @@ export default function GameScreen() {
 
   const gameState = useGame((s) => s.gameState);
   const lobbyCode = useGame((s) => s.lobbyCode);
-  const gameEnded = useGame((s) => s.gameEnded);
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -55,8 +54,16 @@ export default function GameScreen() {
   const myCards = gameState.myCards;
   const lastPlay = gameState.gameHistory[gameState.gameHistory.length - 1];
 
+  // Derive the end-of-game view from durable state (status + winnerId), not the
+  // transient `game_ended` message — so a re-entrant who reconnects after the
+  // game ended still sees the result.
+  const concluded = gameState.status === 'concluded';
+  const winnerId = gameState.winnerId;
+  const winnerUsername = gameState.winnerUsername;
+  const iWon = concluded && winnerId === userId;
+
   const playOn = (targetPlayerId: string) => {
-    if (!selectedCardId) return;
+    if (concluded || !selectedCardId) return;
     gameStore.getState().playCard(selectedCardId, targetPlayerId);
     setSelectedCardId(null);
   };
@@ -84,9 +91,12 @@ export default function GameScreen() {
           >
             <Pressable
               testID="opponent"
-              style={[styles.opponent, selectedCardId ? styles.opponentArmed : styles.opponentIdle]}
+              style={[
+                styles.opponent,
+                selectedCardId && !concluded ? styles.opponentArmed : styles.opponentIdle,
+              ]}
               onPress={() => playOn(p.id)}
-              disabled={!selectedCardId}
+              disabled={!selectedCardId || concluded}
             >
               <View style={styles.opponentInfo}>
                 <Text style={styles.opponentName}>{p.username}</Text>
@@ -135,7 +145,7 @@ export default function GameScreen() {
         )}
       </ScrollView>
 
-      {gameEnded ? (
+      {concluded ? (
         <>
           <Celebration />
           <MotiView
@@ -144,7 +154,11 @@ export default function GameScreen() {
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'timing', duration: 320 }}
           >
-            <Text style={styles.endedText}>Game over</Text>
+            <Text style={styles.endedText}>
+              {iWon
+                ? '🏆 You sprung all your traps first!'
+                : `🏆 ${winnerUsername ?? 'Someone'} sprung all their traps first`}
+            </Text>
             <Pressable style={styles.button} onPress={leave}>
               <Text style={styles.buttonText}>Back to home</Text>
             </Pressable>

@@ -94,6 +94,7 @@ export default function LobbyScreen() {
         renderItem={({ item }) => (
           <View style={styles.playerRow}>
             <Text style={styles.playerName}>
+              {item.isOnline ? '🟢 ' : '⚪ '}
               {item.username}
               {item.id === gameState?.ownerId ? '  (host)' : ''}
               {item.id === userId ? '  (you)' : ''}
