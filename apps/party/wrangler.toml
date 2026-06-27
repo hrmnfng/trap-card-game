@@ -24,9 +24,9 @@ new_sqlite_classes = ["LobbyDO"]
 [[d1_databases]]
 binding = "DB"
 database_name = "trapcard"
-database_id = "386a0a43-1dc7-47e6-894d-b345c4723ca8"
+database_id = "11e42ffc-46f4-4c0d-84a4-67acfca29e32"
 
 # KV: opaque auth tokens.
 [[kv_namespaces]]
 binding = "TOKENS"
-id = "96cde4272224402184add195bea00df7"
+id = "7477828cbae44f9f8bd7e6863e588567"
