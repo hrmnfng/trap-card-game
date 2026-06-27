@@ -155,7 +155,20 @@ export class LobbyDO extends Server<Env> {
       return;
     }
 
-    let room = await this.ensureRoom();
+    // The lobby must already exist (created via POST /api/lobbies). Connecting
+    // to a code that was never created must NOT lazily mint a phantom lobby —
+    // reject so a typed-in junk code can't create one.
+    const existing = await this.loadRoom();
+    if (!existing) {
+      this.sendTo(connection, {
+        type: 'error',
+        message: 'No lobby found for that code',
+        code: 'lobby_not_found',
+      });
+      connection.close(4004, 'lobby_not_found');
+      return;
+    }
+    let room = existing;
 
     // Register the player (idempotent). New players are rejected with
     // joins_locked once the lobby has left waiting; existing members (including

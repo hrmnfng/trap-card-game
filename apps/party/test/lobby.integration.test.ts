@@ -287,4 +287,18 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
     alice2.ws.close();
     bob.ws.close();
   });
+
+  it('rejects connecting to a lobby that was never created', async () => {
+    const code = 'NOPE01';
+    // No createLobby(code) — the room does not exist.
+    const ws = await connect(code, 'p1', 'Alice');
+    const err = await waitFor(ws, 'error');
+    expect(err.code).toBe('lobby_not_found');
+
+    // And it was not created as a side effect: HTTP /state is still 404.
+    const res = await SELF.fetch(`https://do/parties/${PARTY}/${code}/state?playerId=p1`);
+    expect(res.status).toBe(404);
+
+    ws.ws.close();
+  });
 });
