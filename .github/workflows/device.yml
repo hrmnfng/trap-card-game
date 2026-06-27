@@ -48,15 +48,8 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Start Worker (binds 0.0.0.0 for the emulator)
-        working-directory: apps/party
-        run: |
-          npm run db:apply:local
-          nohup npx wrangler dev --ip 0.0.0.0 --port 8787 > /tmp/worker.log 2>&1 &
-          for i in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:8787 && break || sleep 2
-          done
-
+      # The smoke flow only needs Metro to serve the JS bundle; it boots the app
+      # and asserts the home screen renders (no Worker / second player needed).
       - name: Start Metro (Expo dev server)
         working-directory: apps/mobile
         run: |
@@ -64,22 +57,6 @@ jobs:
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://127.0.0.1:8081 && break || sleep 2
           done
-
-      - name: Start player-2 helper and capture LOBBY_CODE
-        working-directory: apps/mobile
-        env:
-          PLAYER2_API_BASE: http://127.0.0.1:8787
-          PLAYER2_PARTY_HOST: 127.0.0.1:8787
-        run: |
-          nohup node maestro/player2.mjs > /tmp/player2.log 2>&1 &
-          CODE=""
-          for i in $(seq 1 30); do
-            CODE=$(grep -oE 'LOBBY_CODE=[A-Z0-9]+' /tmp/player2.log | head -1 | cut -d= -f2)
-            [ -n "$CODE" ] && break || sleep 1
-          done
-          test -n "$CODE" || { echo "no LOBBY_CODE"; cat /tmp/player2.log; exit 1; }
-          echo "LOBBY_CODE=$CODE" >> "$GITHUB_ENV"
-          echo "P1_USER=p1_${{ github.run_id }}_${{ github.run_attempt }}" >> "$GITHUB_ENV"
 
       - name: Run Maestro on the emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -96,7 +73,5 @@ jobs:
           name: maestro-output
           path: |
             ~/.maestro/tests
-            /tmp/worker.log
             /tmp/metro.log
-            /tmp/player2.log
           retention-days: 7
