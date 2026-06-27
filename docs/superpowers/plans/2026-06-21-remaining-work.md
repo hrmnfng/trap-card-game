@@ -33,12 +33,20 @@ Workers/D1/KV, Wrangler, Vitest.
 | Cloudflare resources (D1 id, KV id) provisioned | ❌ `wrangler.toml` still has `REPLACE_WITH_*` placeholders → **Phase B** |
 | Worker deployed | ❌ → **Phase B** (`2026-06-27-phase-b-deploy.md`) |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
-| Expo Dev Build + on-device push | ❌ deferred follow-up (needs EAS; remote push isn't supported in Expo Go) |
+| Android sideload (preview APK) + push | ⏳ in progress — runbook `2026-06-27-android-preview-build-push.md` (EAS preview APK + Firebase/FCM; no store/fees; iOS deferred) |
 | Graphics polish | ❌ (Phase D, deferred/low priority) |
 
 **Gating rule (now satisfied):** Phase C was gated on Phase A passing; Phase A passed
 and the legacy stack was already removed, so **Phase C is obsolete**. Phase B (deploy)
 is independent and ready to run.
+
+> **iOS distribution — open future decision.** Android ships as a sideloaded native
+> preview APK (with push). For iOS, two paths to weigh later: **native** (Apple
+> Developer Program $99/yr, reuses the Expo push stack) vs a **PWA** (free — the
+> existing web build is installable via Safari "Add to Home Screen", but native push
+> doesn't apply; iOS Web Push 16.4+ is a separate service-worker/VAPID build, and
+> foreground-limited). Likely a hybrid: Android native + iOS PWA. The Android plan is
+> unaffected. See `2026-06-27-android-preview-build-push.md`.
 
 ---
 
