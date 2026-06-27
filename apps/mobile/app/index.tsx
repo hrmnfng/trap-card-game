@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -17,8 +17,13 @@ import { authStore, selectIsAuthenticated } from '../src/state/auth';
 import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { colors } from '../src/lib/theme';
+import { getStorage } from '../src/lib/storage';
+import { groupLobbiesByState } from '../src/lib/lobbies';
 import { PressableScale } from '../src/ui/PressableScale';
 import { Screen } from '../src/ui/Screen';
+
+/** Persisted preference key for whether completed lobbies are revealed. */
+const SHOW_COMPLETED_KEY = 'pref_show_completed';
 
 export default function HomeScreen() {
   const isAuthenticated = useAuth(selectIsAuthenticated);
@@ -27,6 +32,37 @@ export default function HomeScreen() {
   const [creating, setCreating] = useState(false);
   const [history, setHistory] = useState<LobbyHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  // Load the persisted "show completed" preference once. Storage may be
+  // unavailable on some platforms (e.g. secure-store on the web build), so a
+  // failure just leaves the default (hidden) rather than surfacing an error.
+  useEffect(() => {
+    let active = true;
+    void getStorage()
+      .getItem(SHOW_COMPLETED_KEY)
+      .then((v) => {
+        if (active) setShowCompleted(v === '1');
+      })
+      .catch(() => {
+        /* keep default */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleCompleted = () => {
+    setShowCompleted((prev) => {
+      const next = !prev;
+      void getStorage()
+        .setItem(SHOW_COMPLETED_KEY, next ? '1' : '0')
+        .catch(() => {
+          /* best-effort persistence */
+        });
+      return next;
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -99,6 +135,14 @@ export default function HomeScreen() {
     router.push(`/lobby/${code}`);
   };
 
+  const { active: activeLobbies, completed: completedLobbies } = groupLobbiesByState(history);
+  const sections = [
+    ...(activeLobbies.length ? [{ key: 'active', title: 'Active', data: activeLobbies }] : []),
+    ...(completedLobbies.length
+      ? [{ key: 'completed', title: 'Completed', data: showCompleted ? completedLobbies : [] }]
+      : []),
+  ];
+
   return (
     <Screen>
       <MotiView
@@ -124,10 +168,27 @@ export default function HomeScreen() {
         ) : history.length === 0 ? (
           <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
         ) : (
-          <FlatList
+          <SectionList
             style={styles.list}
-            data={history}
+            sections={sections}
             keyExtractor={(item) => item.code}
+            stickySectionHeadersEnabled={false}
+            renderSectionHeader={({ section }) =>
+              section.key === 'completed' ? (
+                <Pressable
+                  testID="toggle-completed"
+                  style={styles.sectionHeaderRow}
+                  onPress={toggleCompleted}
+                >
+                  <Text style={styles.sectionHeader}>Completed</Text>
+                  <Text style={styles.sectionToggle}>
+                    {showCompleted ? 'Hide' : `Show (${completedLobbies.length})`}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.sectionHeader}>{section.title}</Text>
+              )
+            }
             renderItem={({ item }) => (
               <Pressable
                 style={styles.lobbyRow}
@@ -188,6 +249,23 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
   sectionLabel: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 8 },
+  sectionHeader: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  sectionToggle: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   list: { flexGrow: 0, maxHeight: 240 },
   lobbyRow: {
     backgroundColor: colors.surface,
