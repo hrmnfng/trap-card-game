@@ -33,7 +33,7 @@ Workers/D1/KV, Wrangler, Vitest.
 | Cloudflare resources (D1 id, KV id) provisioned | ❌ `wrangler.toml` still has `REPLACE_WITH_*` placeholders → **Phase B** |
 | Worker deployed | ❌ → **Phase B** (`2026-06-27-phase-b-deploy.md`) |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
-| Expo Dev Build + on-device push | ❌ deferred follow-up (needs EAS; remote push isn't supported in Expo Go) |
+| Expo Dev Build + on-device push | ⏳ in progress (Android) — runbook `2026-06-27-android-dev-build-push.md` (needs EAS + Firebase/FCM; iOS later) |
 | Graphics polish | ❌ (Phase D, deferred/low priority) |
 
 **Gating rule (now satisfied):** Phase C was gated on Phase A passing; Phase A passed
