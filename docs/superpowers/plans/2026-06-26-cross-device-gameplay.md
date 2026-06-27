@@ -4,7 +4,7 @@
 
 > ## ✅ Resumption status (updated 2026-06-27)
 >
-> Executed via subagent-driven development, per-task TDD (each task: red→green, lint + typecheck, commit). **Tasks 1–10 are DONE, reviewed, and committed. Task 11's automatable portion (web e2e) is DONE; its device-tier manual validation remains for the user** (needs real devices / Android emulator — not runnable in this environment).
+> Executed via subagent-driven development, per-task TDD (each task: red→green, lint + typecheck, commit). **All tasks DONE: Tasks 1–10 implemented & committed; Task 11's web e2e committed; Task 11 device-tier validation (Android Maestro + two-device LAN matrix) run by the user on 2026-06-27 — all rows pass.** A short list of minor follow-up bugs surfaced during device testing is to be raised separately.
 >
 > **Done (commits on `feat/user-authored-trap-cards`):**
 > - Task 1 — shared: permanent membership, remove `leave`/`removePlayer` — `1def97c` (+ fix `835af1f`: existing members reconnect at capacity)
@@ -21,7 +21,11 @@
 >
 > All workspaces green: `@trap/shared` 47 tests, `@trap/party` 45 pass / 6 WS-skip, `@trap/mobile` 41 tests + typecheck; web e2e (2 specs) pass; `npm run lint` clean.
 >
-> **Remaining (device-tier, user-run):** Task 11 Steps 1–3 — Android Maestro device gate + the two-device LAN matrix (reconnection rows R2–R4, winner R7, safe-area R8), results recorded in the PR description. Web auth doesn't persist across a page reload, so true app-backgrounding/force-quit reconnection (R2/R3) and notch safe-area (R8) can only be confirmed on a real device, not in web e2e.
+> **Device-tier validation (Task 11 Steps 1–3) — PASSED (user, 2026-06-27):** Android Maestro device
+> gate + the two-device LAN matrix (reconnection rows R2–R4, winner R7, safe-area R8) all pass. (Web
+> auth doesn't persist across a page reload, so app-backgrounding/force-quit reconnection and notch
+> safe-area are device-only checks — hence the device tier rather than web e2e.) Minor follow-up bugs
+> noted during testing are tracked separately.
 >
 > **Known minor follow-ups (non-blocking):** Task 6 left two slightly redundant store tests and `exit()` doesn't reset `playerId` (pre-existing). Task 4 left `winnerUsername` without a JSDoc line. Optional cleanup.
 >
