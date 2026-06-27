@@ -167,7 +167,7 @@ export default function GameScreen() {
         </>
       ) : (
         <Pressable style={styles.linkButton} onPress={leave}>
-          <Text style={styles.linkText}>Leave game</Text>
+          <Text style={styles.linkText}>Return to lobby</Text>
         </Pressable>
       )}
     </Screen>

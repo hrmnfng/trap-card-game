@@ -88,7 +88,7 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     // leaves the game (closing its socket) and returns from the Home "your
     // lobbies" list — still a member, still holding their full hand, and the
     // host's roster still shows them (no "left").
-    await vis(guest.getByText('Leave game')).click();
+    await vis(guest.getByText('Return to lobby')).click();
     await expect(vis(guest.getByText(new RegExp(`Welcome, ${guestUser}`)))).toBeVisible();
     await vis(guest.getByText(code)).click();
     await guest.waitForURL(new RegExp(`/game/${code}`));
