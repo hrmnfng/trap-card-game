@@ -132,3 +132,20 @@ test('joining a non-existent code does not navigate into a lobby', async ({ page
   await expect(vis(page.getByTestId('create-lobby'))).toBeVisible();
   await expect(page).not.toHaveURL(/\/lobby\//);
 });
+
+/**
+ * #3: a freshly created lobby is listed under the "Active" section back on Home.
+ */
+test('a created lobby appears under the Active section on Home', async ({ page }) => {
+  const user = uniqueUser('grp');
+  await registerAndLand(page, user);
+
+  await vis(page.getByTestId('create-lobby')).click();
+  await page.waitForURL(/\/lobby\/[A-Z0-9]+/);
+  const code = new URL(page.url()).pathname.split('/lobby/')[1]!;
+
+  await page.goBack();
+  await expect(vis(page.getByText(`Welcome, ${user}`))).toBeVisible();
+  await expect(vis(page.getByText('Active'))).toBeVisible();
+  await expect(vis(page.getByText(code))).toBeVisible();
+});
