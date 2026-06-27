@@ -52,10 +52,11 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: 'transparent' },
             headerTransparent: true,
             headerTintColor: colors.text,
+            headerBackButtonDisplayMode: 'minimal',
             contentStyle: { backgroundColor: 'transparent' },
           }}
         >
-          <Stack.Screen name="index" options={{ title: 'Trap Card Game' }} />
+          <Stack.Screen name="index" options={{ title: 'Trap Card Game', headerBackVisible: false }} />
           <Stack.Screen name="login" options={{ title: 'Sign in' }} />
           <Stack.Screen name="lobby/[code]" options={{ title: 'Lobby' }} />
           <Stack.Screen name="prep/[code]" options={{ title: 'Author cards' }} />
