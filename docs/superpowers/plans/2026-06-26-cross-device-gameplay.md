@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> ## ⏸ Resumption status (updated 2026-06-26)
+> ## ✅ Resumption status (updated 2026-06-27)
 >
-> Executed via subagent-driven development, per-task TDD (each task: red→green, lint + typecheck, commit). **Tasks 1–6 are DONE, reviewed, and committed; the shared, party, and mobile-store layers are green.** Remaining: Tasks 7–11.
+> Executed via subagent-driven development, per-task TDD (each task: red→green, lint + typecheck, commit). **Tasks 1–10 are DONE, reviewed, and committed. Task 11's automatable portion (web e2e) is DONE; its device-tier manual validation remains for the user** (needs real devices / Android emulator — not runnable in this environment).
 >
 > **Done (commits on `feat/user-authored-trap-cards`):**
 > - Task 1 — shared: permanent membership, remove `leave`/`removePlayer` — `1def97c` (+ fix `835af1f`: existing members reconnect at capacity)
@@ -13,15 +13,15 @@
 > - Task 4 — shared: winner (first to empty); drop `player_left` message — `b5f9bec`
 > - Task 5 — party DO: `onClose` presence-only, online-set threading, join lock, winner on `game_ended` — `05dd32e` (+ comments `9e24d4e`)
 > - Task 6 — mobile store: `exit()` rename, winner passthrough, drop `player_left`, clear `error` on valid state — `daf0129`
+> - Task 7 — mobile UI: presence dots, winner screen, read-only concluded — `88babf8`
+> - Task 8 — I6 regression test (error clears on next valid state) — `ab7676e`
+> - Task 9 — I7: `unreachable` connect-timeout + friendlier lobby status — `833741f`
+> - Task 10 — I10′: shared safe-area `Screen` wrapper on all 5 routes (kept transparent so the gradient shows) — `d7c638c`
+> - Task 11 (e2e portion) — web e2e covers exit/re-entry membership + winner banner — `1569d7f`
 >
-> All three workspaces currently: `@trap/shared` green (47 tests), `@trap/party` green (45 pass / 6 WS-skip), `@trap/mobile` green (38 tests, typecheck clean).
+> All workspaces green: `@trap/shared` 47 tests, `@trap/party` 45 pass / 6 WS-skip, `@trap/mobile` 41 tests + typecheck; web e2e (2 specs) pass; `npm run lint` clean.
 >
-> **Remaining (NOT started):**
-> - **Task 7** — mobile UI: presence dots (lobby/prep), winner banner + read-only-concluded game screen (I12), derive end view from `status === 'concluded'` + `winnerId` (not the transient `gameEnded` flag).
-> - **Task 8** — I6 regression test (error clears on next valid state — the logic already landed in Task 6; this just adds the dedicated test).
-> - **Task 9** — I7: `unreachable` connection status via an 8s connect timeout in `realtime.ts` + friendlier lobby status text.
-> - **Task 10** — I10′: shared `Screen` safe-area wrapper applied to all 5 routes.
-> - **Task 11** — tier-3 validation: Android Maestro device gate + two-device LAN matrix (esp. reconnection rows R2–R4, winner R7, safe-area R8). Web e2e (`apps/mobile/e2e/multiplayer.spec.ts`) should also be extended to assert no membership loss on reconnect + winner shown.
+> **Remaining (device-tier, user-run):** Task 11 Steps 1–3 — Android Maestro device gate + the two-device LAN matrix (reconnection rows R2–R4, winner R7, safe-area R8), results recorded in the PR description. Web auth doesn't persist across a page reload, so true app-backgrounding/force-quit reconnection (R2/R3) and notch safe-area (R8) can only be confirmed on a real device, not in web e2e.
 >
 > **Known minor follow-ups (non-blocking):** Task 6 left two slightly redundant store tests and `exit()` doesn't reset `playerId` (pre-existing). Task 4 left `winnerUsername` without a JSDoc line. Optional cleanup.
 >
