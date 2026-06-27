@@ -153,4 +153,17 @@ describe('game store', () => {
       winnerUsername: 'A',
     });
   });
+
+  // I6: a transient error (e.g. a rejected action) must not stick around once
+  // the next valid state arrives, or the user sees a stale error forever.
+  it('clears a stale error once a valid state_update arrives', () => {
+    const { store, fake } = setup();
+    store.getState().connect({ code: 'ROOM1', playerId: 'p1', username: 'Alice' });
+
+    fake.emitMessage({ type: 'error', message: 'not_all_ready', code: 'not_all_ready' });
+    expect(store.getState().error).toBe('not_all_ready');
+
+    fake.emitMessage({ type: 'state_update', state: sampleState });
+    expect(store.getState().error).toBeNull();
+  });
 });
