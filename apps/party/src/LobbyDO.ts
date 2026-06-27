@@ -103,10 +103,18 @@ export class LobbyDO extends Server<Env> {
 
   override async onRequest(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    // CORS: the web build calls the DO's /state pull route cross-origin (Expo
+    // web on :8081 → Worker on :8787). The Worker's REST routes set these; the
+    // DO's own responses must too, or the browser blocks the read.
     const json = (body: unknown, status = 200) =>
       new Response(JSON.stringify(body), {
         status,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        },
       });
 
     // POST .../create  -> reserve/create the room
@@ -155,7 +163,20 @@ export class LobbyDO extends Server<Env> {
       return;
     }
 
-    let room = await this.ensureRoom();
+    // The lobby must already exist (created via POST /api/lobbies). Connecting
+    // to a code that was never created must NOT lazily mint a phantom lobby —
+    // reject so a typed-in junk code can't create one.
+    const existing = await this.loadRoom();
+    if (!existing) {
+      this.sendTo(connection, {
+        type: 'error',
+        message: 'No lobby found for that code',
+        code: 'lobby_not_found',
+      });
+      connection.close(4004, 'lobby_not_found');
+      return;
+    }
+    let room = existing;
 
     // Register the player (idempotent). New players are rejected with
     // joins_locked once the lobby has left waiting; existing members (including

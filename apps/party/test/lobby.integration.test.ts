@@ -100,6 +100,9 @@ describe('LobbyDO HTTP flow', () => {
     expect(body.lobbyCode).toBe('ROOM01');
     expect(body.status).toBe('waiting');
     expect(body.created).toBe(true);
+    // The DO's own responses must carry CORS headers so the web build can read
+    // them cross-origin (e.g. the lobby-existence pre-check on /state).
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
   // SKIPPED on the current pool (@cloudflare/vitest-pool-workers@0.12.x). A
@@ -286,5 +289,19 @@ describe.skip('LobbyDO realtime WebSocket flow', () => {
 
     alice2.ws.close();
     bob.ws.close();
+  });
+
+  it('rejects connecting to a lobby that was never created', async () => {
+    const code = 'NOPE01';
+    // No createLobby(code) — the room does not exist.
+    const ws = await connect(code, 'p1', 'Alice');
+    const err = await waitFor(ws, 'error');
+    expect(err.code).toBe('lobby_not_found');
+
+    // And it was not created as a side effect: HTTP /state is still 404.
+    const res = await SELF.fetch(`https://do/parties/${PARTY}/${code}/state?playerId=p1`);
+    expect(res.status).toBe(404);
+
+    ws.ws.close();
   });
 });

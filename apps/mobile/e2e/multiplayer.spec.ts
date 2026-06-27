@@ -88,7 +88,7 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     // leaves the game (closing its socket) and returns from the Home "your
     // lobbies" list — still a member, still holding their full hand, and the
     // host's roster still shows them (no "left").
-    await vis(guest.getByText('Leave game')).click();
+    await vis(guest.getByText('Return to lobby')).click();
     await expect(vis(guest.getByText(new RegExp(`Welcome, ${guestUser}`)))).toBeVisible();
     await vis(guest.getByText(code)).click();
     await guest.waitForURL(new RegExp(`/game/${code}`));
@@ -112,4 +112,23 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     await hostCtx.close();
     await guestCtx.close();
   }
+});
+
+/**
+ * #5: a typed-in code that doesn't exist must be rejected client-side — it
+ * never navigates into a lobby (and so never mints a phantom one). The not-found
+ * Alert is a no-op on the react-native-web build, so we assert by staying on
+ * Home rather than by catching a dialog.
+ */
+test('joining a non-existent code does not navigate into a lobby', async ({ page }) => {
+  const user = uniqueUser('solo');
+  await registerAndLand(page, user);
+  page.on('dialog', (d) => void d.accept()); // harmless if RN-web fires no dialog
+
+  await vis(page.getByPlaceholder('Lobby code')).fill('ZZZZ');
+  await vis(page.getByTestId('join-lobby')).click();
+
+  // Still on Home (Create lobby is Home-only); never entered /lobby/ZZZZ.
+  await expect(vis(page.getByTestId('create-lobby'))).toBeVisible();
+  await expect(page).not.toHaveURL(/\/lobby\//);
 });

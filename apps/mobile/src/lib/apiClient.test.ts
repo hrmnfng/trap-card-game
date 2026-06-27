@@ -128,6 +128,21 @@ describe('ApiClient', () => {
     expect(headersOf(init as RequestInit)['Authorization']).toBe('Bearer tok');
   });
 
+  it('lobbyExists probes the DO state route; true on 200, false on 404', async () => {
+    const okFetch = vi.fn().mockResolvedValue(jsonResponse({ status: 'waiting' }));
+    const okApi = new ApiClient({ baseUrl: 'https://api.test', fetchImpl: okFetch });
+    expect(await okApi.lobbyExists('ABCD')).toBe(true);
+    expect(okFetch.mock.calls[0]![0]).toBe(
+      'https://api.test/parties/lobby/ABCD/state?playerId=exists-probe'
+    );
+
+    const missingApi = new ApiClient({
+      baseUrl: 'https://api.test',
+      fetchImpl: vi.fn().mockResolvedValue(jsonResponse({ error: 'not_found' }, 404)),
+    });
+    expect(await missingApi.lobbyExists('ZZZZ')).toBe(false);
+  });
+
   it('throws ApiError carrying status and code on a non-ok response', async () => {
     const fetchImpl = vi
       .fn()

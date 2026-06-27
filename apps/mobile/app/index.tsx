@@ -86,9 +86,16 @@ export default function HomeScreen() {
     }
   };
 
-  const joinLobby = () => {
+  const joinLobby = async () => {
     const code = normalizeLobbyCode(joinCode);
     if (code.length === 0) return;
+    // Pre-check existence so a typed-in junk code never navigates or opens a
+    // socket (which would otherwise reconnect-storm against the server's reject).
+    const exists = await api.lobbyExists(code).catch(() => false);
+    if (!exists) {
+      Alert.alert('Lobby not found', `No lobby exists with code ${code}.`);
+      return;
+    }
     router.push(`/lobby/${code}`);
   };
 

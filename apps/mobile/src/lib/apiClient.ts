@@ -122,6 +122,21 @@ export class ApiClient {
     ).then((r) => r.lobbies);
   }
 
+  /**
+   * True if a lobby with this code exists. Hits the Durable Object's `/state`
+   * pull route, which 404s for an unknown room without creating it. Used to stop
+   * a typed-in junk code from opening a socket / minting a phantom lobby. Reads
+   * `res.ok` directly (not via `request()`) so a 404 is a clean `false`, not a
+   * thrown `ApiError`.
+   */
+  async lobbyExists(code: string): Promise<boolean> {
+    const res = await this.fetchImpl(
+      `${this.baseUrl}/parties/lobby/${encodeURIComponent(code)}/state?playerId=exists-probe`,
+      { method: 'GET' }
+    );
+    return res.ok;
+  }
+
   registerDevice(
     expoToken: string,
     platform: DevicePlatform
