@@ -1,5 +1,8 @@
 # Full flow: register player 1 on the device, join the lobby created by the
-# player-2 helper, wait for the helper to start the game, then play a card.
+# player-2 helper, then drive the three-stage lifecycle:
+#   1. ready up in the lobby
+#   2. author + submit 3 statements in prep
+#   3. play a card once the helper begins the game
 # Catches the WS-connect / game-entry crash (missing crypto global on Hermes).
 # Env: LOBBY_CODE (from the helper), P1_USER (unique per run, from the workflow).
 # Note: Maestro waits-with-timeout use `extendedWaitUntil`, not `assertVisible`.
@@ -47,14 +50,34 @@ appId: host.exp.exponent
 - inputText: ${LOBBY_CODE}
 - tapOn:
     id: "join-lobby"
-# The helper (owner) starts the game once it sees the device join; the app
-# navigates to the game screen and deals a hand. Reaching here exercises the
-# game-entry WS connect that previously crashed on Hermes.
+# Stage 1: ready up in the lobby.
+- extendedWaitUntil:
+    visible:
+      id: "ready-toggle"
+    timeout: 30000
+- tapOn:
+    id: "ready-toggle"
+# Stage 2: the helper starts prep once both are ready; author + submit a hand.
+- extendedWaitUntil:
+    visible:
+      id: "statement-0"
+    timeout: 30000
+- tapOn:
+    id: "statement-0"
+- inputText: "device trap 1"
+- tapOn:
+    id: "statement-1"
+- inputText: "device trap 2"
+- tapOn:
+    id: "statement-2"
+- inputText: "device trap 3"
+- tapOn:
+    id: "submit-cards"
+# Stage 3: the helper begins the game once all submitted; play a card.
 - extendedWaitUntil:
     visible:
       id: "hand-card"
     timeout: 60000
-# Play a card on the opponent and confirm the play registers.
 - tapOn:
     id: "hand-card"
     index: 0

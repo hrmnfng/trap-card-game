@@ -2,7 +2,7 @@
 
 Browser tests that drive the Expo **web** build against a real local Cloudflare
 Worker + Durable Object (HTTP + WebSocket). They automate the Phase A4 manual
-matrix from `plans/remaining-work.md`.
+matrix from `plans/2026-06-21-remaining-work.md`.
 
 ## Run
 
@@ -35,8 +35,14 @@ First run is slow (Metro's initial web bundle); subsequent runs are ~8s.
 - `auth.spec.ts` — register → authenticated Home; logout → login round-trip.
 - `multiplayer.spec.ts` — two isolated browser contexts ("two devices"): host
   creates a lobby, guest joins by code, both see each other, the non-owner has
-  no Start control, the owner starts → each is dealt 3 cards, and a played card
-  is reflected on both clients (hand count drops, history shows on both).
+  no Start control; both players ready up, the owner starts prep, each authors
+  and submits 3 statements, the owner begins the game → each has a 3-card hand,
+  and a played card surfaces its statement on both clients (hand count drops,
+  history shows on both). Then it covers the cross-device guarantees: the guest
+  **exits the game and re-enters from Home** with their hand and roster intact
+  (permanent membership / reconnection over a real socket close+reopen), and the
+  host **empties their hand** so both clients show the winner banner naming the
+  first-to-empty.
 
 ## Web-build gotchas (baked into `helpers.ts`)
 

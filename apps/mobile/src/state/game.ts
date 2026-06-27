@@ -32,15 +32,18 @@ export interface GameStoreState {
   gameState: GameState | null;
   /** Most recent `card_played` event (for transient UI/animation). */
   lastCardPlayed: CardPlayedMessage | null;
-  /** Set when the game ends; carries the players who ran out of cards. */
-  gameEnded: { finishedPlayerIds: string[] } | null;
+  /** Set when the game ends; carries the players who ran out of cards plus the winner. */
+  gameEnded: { finishedPlayerIds: string[]; winnerId: string | null; winnerUsername: string | null } | null;
   error: string | null;
 
   connect(args: ConnectArgs): void;
   startGame(): void;
+  setReady(ready: boolean): void;
+  startPrep(): void;
+  submitCards(statements: string[]): void;
   playCard(cardId: string, targetPlayerId: string): void;
   requestState(): void;
-  leave(): void;
+  exit(): void;
 }
 
 export type ConnectionFactory = (options: LobbyConnectionOptions) => LobbyConnection;
@@ -60,21 +63,27 @@ function reduce(
 ): void {
   switch (message.type) {
     case 'connected':
-      set({ playerId: message.playerId, lobbyCode: message.lobbyCode });
+      set({ playerId: message.playerId, lobbyCode: message.lobbyCode, error: null });
       return;
     case 'state_update':
-      set({ gameState: message.state });
+      set({ gameState: message.state, error: null });
       return;
     case 'card_played':
       set({ lastCardPlayed: message });
       return;
     case 'game_ended':
-      set({ gameEnded: { finishedPlayerIds: message.finishedPlayerIds } });
+      set({
+        gameEnded: {
+          finishedPlayerIds: message.finishedPlayerIds,
+          winnerId: message.winnerId,
+          winnerUsername: message.winnerUsername,
+        },
+      });
       return;
     case 'error':
       set({ error: message.message });
       return;
-    // player_joined / player_left / game_started / pong are always followed by
+    // player_joined / game_started / pong are always followed by
     // a `state_update`, so no separate handling is needed.
     default:
       return;
@@ -116,6 +125,18 @@ export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreSta
       connection?.startGame();
     },
 
+    setReady(ready) {
+      connection?.setReady(ready);
+    },
+
+    startPrep() {
+      connection?.startPrep();
+    },
+
+    submitCards(statements) {
+      connection?.submitCards(statements);
+    },
+
     playCard(cardId, targetPlayerId) {
       connection?.playCard(cardId, targetPlayerId);
     },
@@ -124,7 +145,7 @@ export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreSta
       connection?.requestState();
     },
 
-    leave() {
+    exit() {
       connection?.close();
       connection = null;
       set({

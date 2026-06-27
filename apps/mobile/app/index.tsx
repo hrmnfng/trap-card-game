@@ -18,6 +18,7 @@ import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { colors } from '../src/lib/theme';
 import { PressableScale } from '../src/ui/PressableScale';
+import { Screen } from '../src/ui/Screen';
 
 export default function HomeScreen() {
   const isAuthenticated = useAuth(selectIsAuthenticated);
@@ -56,7 +57,7 @@ export default function HomeScreen() {
 
   if (!isAuthenticated) {
     return (
-      <View style={styles.container}>
+      <Screen style={styles.container}>
         <Text style={styles.heading}>Trap Card Game</Text>
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
         <Pressable
@@ -66,7 +67,7 @@ export default function HomeScreen() {
         >
           <Text style={styles.buttonText}>Sign in / Register</Text>
         </Pressable>
-      </View>
+      </Screen>
     );
   }
 
@@ -92,75 +93,77 @@ export default function HomeScreen() {
   };
 
   return (
-    <MotiView
-      style={styles.container}
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 260 }}
-    >
-      <Text style={styles.heading}>Welcome, {username}</Text>
-
-      <PressableScale
-        testID="create-lobby"
-        style={[styles.button, creating && styles.buttonDisabled]}
-        onPress={createLobby}
-        disabled={creating}
+    <Screen>
+      <MotiView
+        style={styles.container}
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 260 }}
       >
-        <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
-      </PressableScale>
+        <Text style={styles.heading}>Welcome, {username}</Text>
 
-      <Text style={styles.sectionLabel}>Your lobbies</Text>
-      {loadingHistory ? (
-        <ActivityIndicator color={colors.muted} />
-      ) : history.length === 0 ? (
-        <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
-      ) : (
-        <FlatList
-          style={styles.list}
-          data={history}
-          keyExtractor={(item) => item.code}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.lobbyRow}
-              onPress={() => openLobby(item)}
-              disabled={item.status === 'concluded'}
-            >
-              <Text style={styles.lobbyCode}>{item.code}</Text>
-              <Text style={styles.lobbyMeta}>
-                {item.status} · {item.playerCount} player
-                {item.playerCount === 1 ? '' : 's'}
-                {item.ownerUsername ? ` · host ${item.ownerUsername}` : ''}
-              </Text>
-            </Pressable>
-          )}
-        />
-      )}
+        <PressableScale
+          testID="create-lobby"
+          style={[styles.button, creating && styles.buttonDisabled]}
+          onPress={createLobby}
+          disabled={creating}
+        >
+          <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
+        </PressableScale>
 
-      <View style={styles.joinRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Lobby code"
-          placeholderTextColor={colors.muted}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          value={joinCode}
-          onChangeText={setJoinCode}
-        />
-        <Pressable testID="join-lobby" style={styles.button} onPress={joinLobby}>
-          <Text style={styles.buttonText}>Join</Text>
+        <Text style={styles.sectionLabel}>Your lobbies</Text>
+        {loadingHistory ? (
+          <ActivityIndicator color={colors.muted} />
+        ) : history.length === 0 ? (
+          <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
+        ) : (
+          <FlatList
+            style={styles.list}
+            data={history}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.lobbyRow}
+                onPress={() => openLobby(item)}
+                disabled={item.status === 'concluded'}
+              >
+                <Text style={styles.lobbyCode}>{item.code}</Text>
+                <Text style={styles.lobbyMeta}>
+                  {item.status} · {item.playerCount} player
+                  {item.playerCount === 1 ? '' : 's'}
+                  {item.ownerUsername ? ` · host ${item.ownerUsername}` : ''}
+                </Text>
+              </Pressable>
+            )}
+          />
+        )}
+
+        <View style={styles.joinRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Lobby code"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            value={joinCode}
+            onChangeText={setJoinCode}
+          />
+          <Pressable testID="join-lobby" style={styles.button} onPress={joinLobby}>
+            <Text style={styles.buttonText}>Join</Text>
+          </Pressable>
+        </View>
+
+        <Pressable
+          testID="logout"
+          style={styles.linkButton}
+          onPress={() => {
+            void authStore.getState().logout();
+          }}
+        >
+          <Text style={styles.linkText}>Log out</Text>
         </Pressable>
-      </View>
-
-      <Pressable
-        testID="logout"
-        style={styles.linkButton}
-        onPress={() => {
-          void authStore.getState().logout();
-        }}
-      >
-        <Text style={styles.linkText}>Log out</Text>
-      </Pressable>
-    </MotiView>
+      </MotiView>
+    </Screen>
   );
 }
 

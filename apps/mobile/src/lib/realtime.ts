@@ -53,7 +53,7 @@ export type SocketFactory = (args: SocketFactoryArgs) => RealtimeSocket;
 const defaultSocketFactory: SocketFactory = ({ host, party, room, query }) =>
   new PartySocket({ host, party, room, query }) as unknown as RealtimeSocket;
 
-export type ConnectionStatus = 'connecting' | 'open' | 'closed';
+export type ConnectionStatus = 'connecting' | 'open' | 'closed' | 'unreachable';
 
 export interface LobbyConnectionOptions {
   code: string;
@@ -79,6 +79,9 @@ function asServerMessage(value: unknown): ServerMessage | null {
 export class LobbyConnection {
   private socket: RealtimeSocket | null = null;
   private status: ConnectionStatus = 'closed';
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** How long to wait for `open` before declaring the Worker unreachable. */
+  private static readonly CONNECT_TIMEOUT_MS = 8000;
   private readonly messageHandlers = new Set<MessageHandler>();
   private readonly statusHandlers = new Set<StatusHandler>();
 
@@ -89,6 +92,13 @@ export class LobbyConnection {
     if (this.socket) return;
     const factory = this.options.socketFactory ?? defaultSocketFactory;
     this.setStatus('connecting');
+    // If the socket never opens (server down, wrong host), surface an actionable
+    // status instead of spinning on 'connecting' forever. PartySocket keeps
+    // retrying underneath, so a later 'open' still recovers the connection.
+    this.connectTimer = setTimeout(() => {
+      if (this.status === 'connecting') this.setStatus('unreachable');
+    }, LobbyConnection.CONNECT_TIMEOUT_MS);
+
     this.socket = factory({
       host: this.options.host ?? config.partyHost,
       party: LOBBY_PARTY,
@@ -96,7 +106,10 @@ export class LobbyConnection {
       query: { playerId: this.options.playerId, username: this.options.username },
     });
 
-    this.socket.addEventListener('open', () => this.setStatus('open'));
+    this.socket.addEventListener('open', () => {
+      this.clearConnectTimer();
+      this.setStatus('open');
+    });
     this.socket.addEventListener('close', () => this.setStatus('closed'));
     this.socket.addEventListener('message', (ev: RealtimeMessageEvent) => {
       let parsed: unknown;
@@ -139,6 +152,18 @@ export class LobbyConnection {
     this.send({ type: 'start_game' });
   }
 
+  setReady(ready: boolean): void {
+    this.send({ type: 'set_ready', ready });
+  }
+
+  startPrep(): void {
+    this.send({ type: 'start_prep' });
+  }
+
+  submitCards(statements: string[]): void {
+    this.send({ type: 'submit_cards', statements });
+  }
+
   playCard(cardId: string, targetPlayerId: string): void {
     this.send({ type: 'play_card', cardId, targetPlayerId });
   }
@@ -147,7 +172,15 @@ export class LobbyConnection {
     this.send({ type: 'ping' });
   }
 
+  private clearConnectTimer(): void {
+    if (this.connectTimer) {
+      clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
+  }
+
   close(): void {
+    this.clearConnectTimer();
     this.socket?.close();
     this.socket = null;
     this.setStatus('closed');

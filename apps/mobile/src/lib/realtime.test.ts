@@ -133,6 +133,21 @@ describe('LobbyConnection', () => {
     ]);
   });
 
+  it('serializes ready/prep/submit client messages', () => {
+    const { conn, fake } = setup();
+    conn.connect();
+
+    conn.setReady(true);
+    conn.startPrep();
+    conn.submitCards(['a', 'b']);
+
+    expect(fake.sent.map((s) => JSON.parse(s))).toEqual([
+      { type: 'set_ready', ready: true },
+      { type: 'start_prep' },
+      { type: 'submit_cards', statements: ['a', 'b'] },
+    ]);
+  });
+
   it('tracks connection status through open/close', () => {
     const { conn, fake } = setup();
     const statuses: string[] = [];
@@ -154,5 +169,38 @@ describe('LobbyConnection', () => {
     conn.close();
     expect(fake.close).toHaveBeenCalledTimes(1);
     expect(conn.getStatus()).toBe('closed');
+  });
+
+  // I7: a Worker that never accepts the socket (wrong host, server down) should
+  // surface an actionable status rather than spinning on 'connecting' forever.
+  it('surfaces "unreachable" if no open arrives within the connect timeout', () => {
+    vi.useFakeTimers();
+    try {
+      const { conn } = setup();
+      const statuses: string[] = [];
+      conn.onStatus((s) => statuses.push(s));
+
+      conn.connect();
+      expect(conn.getStatus()).toBe('connecting');
+      vi.advanceTimersByTime(8000);
+
+      expect(statuses).toContain('unreachable');
+      expect(conn.getStatus()).toBe('unreachable');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not flip to "unreachable" when open arrives before the timeout', () => {
+    vi.useFakeTimers();
+    try {
+      const { conn, fake } = setup();
+      conn.connect();
+      fake.emitOpen();
+      vi.advanceTimersByTime(8000);
+      expect(conn.getStatus()).toBe('open');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

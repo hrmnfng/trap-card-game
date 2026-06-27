@@ -11,7 +11,14 @@ import type { GameState } from './types.js';
 /* Client -> Server (Durable Object)                                          */
 /* -------------------------------------------------------------------------- */
 
-export type ClientMessageType = 'get_state' | 'start_game' | 'play_card' | 'ping';
+export type ClientMessageType =
+  | 'get_state'
+  | 'set_ready'
+  | 'start_prep'
+  | 'submit_cards'
+  | 'start_game'
+  | 'play_card'
+  | 'ping';
 
 export interface GetStateMessage {
   type: 'get_state';
@@ -27,12 +34,29 @@ export interface PlayCardMessage {
   targetPlayerId: string;
 }
 
+export interface SetReadyMessage {
+  type: 'set_ready';
+  ready: boolean;
+}
+
+export interface StartPrepMessage {
+  type: 'start_prep';
+}
+
+export interface SubmitCardsMessage {
+  type: 'submit_cards';
+  statements: string[];
+}
+
 export interface PingMessage {
   type: 'ping';
 }
 
 export type ClientMessage =
   | GetStateMessage
+  | SetReadyMessage
+  | StartPrepMessage
+  | SubmitCardsMessage
   | StartGameMessage
   | PlayCardMessage
   | PingMessage;
@@ -45,7 +69,7 @@ export type ServerMessageType =
   | 'connected'
   | 'state_update'
   | 'player_joined'
-  | 'player_left'
+  | 'prep_started'
   | 'game_started'
   | 'card_played'
   | 'game_ended'
@@ -69,10 +93,8 @@ export interface PlayerJoinedMessage {
   username: string;
 }
 
-export interface PlayerLeftMessage {
-  type: 'player_left';
-  playerId: string;
-  username: string;
+export interface PrepStartedMessage {
+  type: 'prep_started';
 }
 
 export interface GameStartedMessage {
@@ -85,13 +107,16 @@ export interface CardPlayedMessage {
   playerUsername: string;
   targetPlayerId: string;
   targetUsername: string;
-  cardValue: number;
+  statement: string;
 }
 
 export interface GameEndedMessage {
   type: 'game_ended';
   /** Player ids that ran out of cards (triggered the end). */
   finishedPlayerIds: string[];
+  /** First player to empty their hand. */
+  winnerId: string | null;
+  winnerUsername: string | null;
 }
 
 export interface ErrorMessage {
@@ -108,7 +133,7 @@ export type ServerMessage =
   | ConnectedMessage
   | StateUpdateMessage
   | PlayerJoinedMessage
-  | PlayerLeftMessage
+  | PrepStartedMessage
   | GameStartedMessage
   | CardPlayedMessage
   | GameEndedMessage
@@ -140,6 +165,21 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
           cardId: msg['cardId'],
           targetPlayerId: msg['targetPlayerId'],
         };
+      }
+      return null;
+    case 'set_ready':
+      if (typeof msg['ready'] === 'boolean') {
+        return { type: 'set_ready', ready: msg['ready'] };
+      }
+      return null;
+    case 'start_prep':
+      return { type: 'start_prep' };
+    case 'submit_cards':
+      if (
+        Array.isArray(msg['statements']) &&
+        msg['statements'].every((s) => typeof s === 'string')
+      ) {
+        return { type: 'submit_cards', statements: msg['statements'] as string[] };
       }
       return null;
     default:

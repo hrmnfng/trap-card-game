@@ -23,8 +23,8 @@ here to help prevent future agents from having the same issue.
   read via `GET /api/lobbies/history` — it backs the Home "your lobbies" list.
 - The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks
   have been **removed** (Phase 6 cutover landed). The repo is now the monorepo above.
-- **Plans:** the live docs are `plans/migration-expo-cloudflare.md` (overall
-  migration + status) and `plans/remaining-work.md` (executable remaining work).
+- **Plans:** the live docs are `plans/2026-06-21-migration-expo-cloudflare.md` (overall
+  migration + status) and `plans/2026-06-21-remaining-work.md` (executable remaining work).
   Feature designs live under `docs/superpowers/`.
 
 ## Code Standards

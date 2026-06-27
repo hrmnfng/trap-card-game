@@ -12,8 +12,10 @@ import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
+import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { Celebration } from '../../src/ui/Celebration';
+import { Screen } from '../../src/ui/Screen';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -22,7 +24,6 @@ export default function GameScreen() {
 
   const gameState = useGame((s) => s.gameState);
   const lobbyCode = useGame((s) => s.lobbyCode);
-  const gameEnded = useGame((s) => s.gameEnded);
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -32,6 +33,13 @@ export default function GameScreen() {
       gameStore.getState().connect({ code, playerId: userId, username });
     }
   }, [code, userId, username, lobbyCode]);
+
+  const me = gameState?.players.find((p) => p.id === userId);
+  useEffect(() => {
+    if (!gameState || !code) return;
+    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
+    if (target !== 'game') router.replace(`/${target}/${code}`);
+  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
@@ -47,19 +55,27 @@ export default function GameScreen() {
   const myCards = gameState.myCards;
   const lastPlay = gameState.gameHistory[gameState.gameHistory.length - 1];
 
+  // Derive the end-of-game view from durable state (status + winnerId), not the
+  // transient `game_ended` message — so a re-entrant who reconnects after the
+  // game ended still sees the result.
+  const concluded = gameState.status === 'concluded';
+  const winnerId = gameState.winnerId;
+  const winnerUsername = gameState.winnerUsername;
+  const iWon = concluded && winnerId === userId;
+
   const playOn = (targetPlayerId: string) => {
-    if (!selectedCardId) return;
+    if (concluded || !selectedCardId) return;
     gameStore.getState().playCard(selectedCardId, targetPlayerId);
     setSelectedCardId(null);
   };
 
   const leave = () => {
-    gameStore.getState().leave();
+    gameStore.getState().exit();
     router.replace('/');
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.section}>Opponents</Text>
         <Text style={styles.hint}>
@@ -76,9 +92,12 @@ export default function GameScreen() {
           >
             <Pressable
               testID="opponent"
-              style={[styles.opponent, selectedCardId ? styles.opponentArmed : styles.opponentIdle]}
+              style={[
+                styles.opponent,
+                selectedCardId && !concluded ? styles.opponentArmed : styles.opponentIdle,
+              ]}
               onPress={() => playOn(p.id)}
-              disabled={!selectedCardId}
+              disabled={!selectedCardId || concluded}
             >
               <View style={styles.opponentInfo}>
                 <Text style={styles.opponentName}>{p.username}</Text>
@@ -99,7 +118,7 @@ export default function GameScreen() {
             {myCards.map((card: Card, i: number) => (
               <PlayingCard
                 key={card.id}
-                value={card.value}
+                statement={card.statement}
                 index={i}
                 selected={card.id === selectedCardId}
                 onPress={() => setSelectedCardId(card.id === selectedCardId ? null : card.id)}
@@ -120,14 +139,14 @@ export default function GameScreen() {
             .reverse()
             .map((h) => (
               <Text key={h.id} style={styles.historyItem}>
-                {h.playerUsername} played {h.cardValue ?? '?'} on{' '}
+                {h.playerUsername} played "{h.statement ?? '?'}" on{' '}
                 {h.targetUsername ?? 'unknown'}
               </Text>
             ))
         )}
       </ScrollView>
 
-      {gameEnded ? (
+      {concluded ? (
         <>
           <Celebration />
           <MotiView
@@ -136,7 +155,11 @@ export default function GameScreen() {
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ type: 'timing', duration: 320 }}
           >
-            <Text style={styles.endedText}>Game over</Text>
+            <Text style={styles.endedText}>
+              {iWon
+                ? '🏆 You sprung all your traps first!'
+                : `🏆 ${winnerUsername ?? 'Someone'} sprung all their traps first`}
+            </Text>
             <Pressable style={styles.button} onPress={leave}>
               <Text style={styles.buttonText}>Back to home</Text>
             </Pressable>
@@ -147,7 +170,7 @@ export default function GameScreen() {
           <Text style={styles.linkText}>Leave game</Text>
         </Pressable>
       )}
-    </View>
+    </Screen>
   );
 }
 
@@ -182,18 +205,6 @@ const styles = StyleSheet.create({
   opponentActionIdle: { color: colors.muted, fontSize: 13, fontWeight: '400' },
   opponentName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   hand: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  card: {
-    width: 56,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  cardSelected: { borderColor: colors.accent, backgroundColor: '#22543d' },
-  cardValue: { color: colors.text, fontSize: 24, fontWeight: '700' },
   historyItem: { color: colors.muted, fontSize: 14, marginTop: 4 },
   subtle: { color: colors.muted, fontSize: 14 },
   endedBanner: {
