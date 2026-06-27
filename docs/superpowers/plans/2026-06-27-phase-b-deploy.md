@@ -22,6 +22,32 @@ the client config step).
 
 ---
 
+## Dev vs prod config (read first)
+
+**Worker — no separate config file.** Dev and prod are separated by the *command*,
+not by a file: `wrangler dev` runs a **local Miniflare** with its own simulated
+D1/KV (it ignores the real ids in `wrangler.toml`), while `wrangler deploy` /
+`--remote` use the **real** resources. So one `wrangler.toml` and one hosted Worker
+is correct. (A separate hosted *staging* env would use a `[env.staging]` block —
+overkill for now.)
+
+**Mobile — use Expo's env-file split.** A single `.env` gets clobbered when you
+toggle LAN ↔ prod. Your `.gitignore` ignores `.env`, `.env.local`, `.env.*.local`
+but **not** `.env.development` / `.env.production`, so use:
+
+| File | Committed? | Purpose |
+|------|-----------|---------|
+| `.env.development` | yes | local default (e.g. `127.0.0.1:8787` for emulator/web) |
+| `.env.production` | yes | the deployed `workers.dev` URL — used by production builds/exports |
+| `.env.local` | no (git-ignored) | **your** machine override: a physical device's LAN IP, or pointing local at prod for ad-hoc testing |
+
+> **Gotcha:** `expo start` always runs in **development** mode, so `.env.production`
+> is *not* loaded by `expo start` — it only applies to production builds
+> (`eas build` / `expo export`). To test the **prod backend from a local
+> `expo start`**, override via `.env.local` (Step 5), not by editing `.env`.
+
+---
+
 ## Prerequisites
 
 - A Cloudflare account (the free tier covers Workers + D1 + KV + Durable Objects
@@ -146,7 +172,8 @@ If all three succeed, the hosted backend is live and correct.
 
 ## Step 5: Point the app at production and play against it
 
-1. Set `apps/mobile/.env` (git-ignored) to the deployed Worker:
+1. **Record the prod URL for builds** — create `apps/mobile/.env.production`
+   (committed; the URL is public, not a secret):
 
    ```bash
    EXPO_PUBLIC_API_BASE_URL=https://trapcard-party.<your-subdomain>.workers.dev
@@ -157,8 +184,11 @@ If all three succeed, the hosted backend is live and correct.
    **`wss`** for a non-local host, so realtime runs over secure WebSocket. The web
    build's cross-origin calls are allowed by the Worker's `Access-Control-Allow-Origin: *`.
 
-2. Restart Metro so the new env is inlined, then run on two clients (e.g. Expo Go +
-   web, or two devices):
+2. **Test prod from a local `expo start`** — because `expo start` runs in
+   *development* mode (so it won't read `.env.production`), put the same two values
+   in `apps/mobile/.env.local` (git-ignored, highest precedence — it overrides your
+   dev `.env`). Then restart Metro and run two clients (e.g. Expo Go + web, or two
+   devices):
 
    ```bash
    cd apps/mobile && npx expo start
@@ -168,16 +198,19 @@ If all three succeed, the hosted backend is live and correct.
    by code → ready → prep → play a card → both see it. This confirms HTTPS REST +
    WSS realtime against production.
 
+   > To switch back to local LAN dev, delete (or empty) `.env.local` and restart
+   > Metro — your `.env` / `.env.development` defaults take over again.
+
 ---
 
-## Step 6: Commit the wired `wrangler.toml`
+## Step 6: Commit the wired config
 
-The two resource ids belong in version control (they're not secrets, and CI/other
-machines need them to deploy):
+The D1/KV ids and the prod URL are public (not secrets), and CI/other machines need
+them — so commit both. (`.env.local` stays git-ignored.)
 
 ```bash
-git add apps/party/wrangler.toml
-git commit -m "chore(party): wire production D1 + KV ids; deploy to workers.dev"
+git add apps/party/wrangler.toml apps/mobile/.env.production
+git commit -m "chore: wire production D1 + KV ids + prod client URL; deploy to workers.dev"
 ```
 
 ---
@@ -189,8 +222,8 @@ git commit -m "chore(party): wire production D1 + KV ids; deploy to workers.dev"
 - [ ] remote schema applied; `users`/`device_tokens`/`lobby_history` exist
 - [ ] `wrangler deploy` printed the `workers.dev` URL
 - [ ] curl register + create-lobby + state succeed against the deployed URL
-- [ ] two clients play a game against production over `wss`
-- [ ] `wrangler.toml` committed with the real ids
+- [ ] two clients play a game against production over `wss` (via `.env.local`)
+- [ ] `wrangler.toml` + `.env.production` committed; `.env.local` left git-ignored
 
 ---
 
@@ -206,9 +239,10 @@ git commit -m "chore(party): wire production D1 + KV ids; deploy to workers.dev"
 - **Custom domain.** Swap the `workers.dev` URL for a domain on Cloudflare (add a
   `route`/`custom_domain` in `wrangler.toml`); update the mobile `EXPO_PUBLIC_*`
   accordingly.
-- **Production client config for store builds.** This runbook uses `apps/mobile/.env`
-  for local prod testing; a real store build should set `EXPO_PUBLIC_*` via EAS env
-  (lands with the Dev Build follow-up).
+- **EAS env for store builds.** This runbook commits `.env.production` (auto-used by
+  `expo export` / production builds) and uses `.env.local` for local prod testing.
+  An EAS-driven store build can instead source `EXPO_PUBLIC_*` from EAS env/secrets
+  if you prefer not to commit the URL — decide alongside the Dev Build follow-up.
 
 ---
 
