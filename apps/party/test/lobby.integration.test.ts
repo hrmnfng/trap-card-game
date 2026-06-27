@@ -100,6 +100,9 @@ describe('LobbyDO HTTP flow', () => {
     expect(body.lobbyCode).toBe('ROOM01');
     expect(body.status).toBe('waiting');
     expect(body.created).toBe(true);
+    // The DO's own responses must carry CORS headers so the web build can read
+    // them cross-origin (e.g. the lobby-existence pre-check on /state).
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
   // SKIPPED on the current pool (@cloudflare/vitest-pool-workers@0.12.x). A
