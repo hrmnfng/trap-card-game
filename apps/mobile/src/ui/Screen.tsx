@@ -13,11 +13,12 @@ export function Screen({ children, style }: { children: ReactNode; style?: ViewS
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
       {/* Lift inputs above the soft keyboard (e.g. the join-code field on Home,
-          the password field on Login). Inert when no keyboard is showing, so
-          screens without inputs are unaffected. */}
+          the password field on Login). `undefined` on Android is a no-op, so it
+          needs `height` to actually avoid the keyboard there. Inert when no
+          keyboard is showing, so screens without inputs are unaffected. */}
       <KeyboardAvoidingView
         style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={[styles.body, style]}>{children}</View>
       </KeyboardAvoidingView>

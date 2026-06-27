@@ -177,7 +177,9 @@ export default function GameScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 20, gap: 8 },
+  // Extra top padding clears the transparent floating header bar (the back
+  // chevron) so the first "Opponents" section isn't tucked under it.
+  scroll: { paddingTop: 44, paddingHorizontal: 20, paddingBottom: 20, gap: 8 },
   section: {
     color: colors.text,
     fontSize: 18,
