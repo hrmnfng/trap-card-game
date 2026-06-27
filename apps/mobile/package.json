@@ -8,7 +8,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e:clean": "node scripts/free-e2e-ports.mjs",
-    "device:player2": "node maestro/player2.mjs",
     "pretest:e2e": "node scripts/free-e2e-ports.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
