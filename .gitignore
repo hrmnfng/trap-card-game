@@ -1,7 +1,8 @@
-# Environment files
+# Environment files — never commit any of these. Client config (EXPO_PUBLIC_*)
+# lives in a local .env / .env.local for dev; production builds inject it via
+# EAS env / GitHub Actions Secrets (no .env.production in the repo).
 .env
-.env.local
-.env.*.local
+.env.*
 
 # Docker
 docker-compose.override.yml

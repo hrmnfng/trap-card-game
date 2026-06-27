@@ -15,9 +15,17 @@
 | 3 | `LobbyDO` Durable Object (PartyServer) with DO SQLite state | ✅ completed |
 | 4 | Expo Push notifications (3 triggers) + tests | ✅ completed |
 | 4b | `LobbyDO` integration test (connect/start/play via WebSocket) | ✅ completed (WS-transport tests `.skip` — see below) |
-| 5 | Expo app (expo-router, Zustand, PartySocket, screens) | ✅ code complete + verified (typecheck/tests/doctor); device run pending (user) |
-| 6 | Cutover — delete old `frontend/`/`backend/`, update docs, `npm audit` | ⬜ pending (medium) |
+| 5 | Expo app (expo-router, Zustand, PartySocket, screens) | ✅ complete + device-validated (web e2e + LAN matrix + smoke gate) |
+| 6 | Cutover — delete old `frontend/`/`backend/`, update docs, `npm audit` | ✅ completed (legacy stack removed) |
 | 7 | Graphics polish with R3F native (deferred effects) | ⬜ pending (low) |
+
+> **Status update (2026-06-27):** The migration is functionally complete — phases
+> 0–6 are done and the legacy Vue/FastAPI stack is gone. Since then the app gained
+> user-authored cards, the cross-device gameplay refactor (permanent membership /
+> presence / winner), and a batch of UX fixes (PRs #5–#10). The remaining work is
+> **deployment** (`plans/2026-06-27-phase-b-deploy.md`), the deferred **Expo Dev Build
+> + push**, and optional **graphics polish** (phase 7). See
+> `plans/2026-06-21-remaining-work.md` for the consolidated status.
 
 Phases 0–4 produced real code under `apps/party/` and `packages/shared/`. The work
 lives on branch `feat/game-mechanics` (committed + pushed).

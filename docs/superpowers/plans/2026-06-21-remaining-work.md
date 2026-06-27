@@ -16,25 +16,41 @@ Workers/D1/KV, Wrangler, Vitest.
 
 ---
 
-## Current Status (entering this plan)
+## Current Status
+
+> **Refreshed 2026-06-27.** Since this plan was written, a lot shipped (PRs #5–#10):
+> user-authored cards + the cross-device gameplay refactor, post-merge UX fixes,
+> lobby grouping, and the device gate scoped to smoke. **Phase A is done, Phase C is
+> obsolete (legacy already removed), and Phase B (deploy) is the active milestone** —
+> now broken out into its own runbook: **`docs/superpowers/plans/2026-06-27-phase-b-deploy.md`**.
 
 | Area | State |
 |------|-------|
-| `packages/shared` (types, messages, game rules) | ✅ built, 25 tests pass |
-| `apps/party` (Worker, LobbyDO, auth, push) | ✅ 26 tests pass, 4 WS-transport tests `.skip` (test-pool segfault) |
-| `apps/mobile` (Expo app) | ✅ code complete, 28 unit tests pass, typecheck clean, `expo-doctor` 18/18 |
-| End-to-end on a real device | ❌ not yet run |
-| Cloudflare resources (D1 id, KV id) provisioned | ❌ `wrangler.toml` has `REPLACE_WITH_*` placeholders |
-| Worker deployed | ❌ |
-| Legacy `frontend/` + `backend/` removed | ❌ (Phase 6) |
-| Graphics polish | ❌ (Phase 7, deferred/low priority) |
+| `packages/shared` (types, messages, game rules) | ✅ ~47 tests pass |
+| `apps/party` (Worker, LobbyDO, auth, push) | ✅ ~45 tests pass, WS-transport tests `.skip` (test-pool segfault) |
+| `apps/mobile` (Expo app) | ✅ ~44 unit tests + typecheck; web e2e (Playwright) green |
+| End-to-end validation | ✅ web e2e (tier 2) + smoke device gate (tier 3) green; **manual two-device LAN matrix passed 2026-06-27** |
+| Cloudflare resources (D1 id, KV id) provisioned | ❌ `wrangler.toml` still has `REPLACE_WITH_*` placeholders → **Phase B** |
+| Worker deployed | ❌ → **Phase B** (`2026-06-27-phase-b-deploy.md`) |
+| Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
+| Expo Dev Build + on-device push | ❌ deferred follow-up (needs EAS; remote push isn't supported in Expo Go) |
+| Graphics polish | ❌ (Phase D, deferred/low priority) |
 
-**Gating rule:** Do NOT start Phase C (cutover / deleting the old stack) until Phase A
-(end-to-end validation) passes. The old stack is the only known-working fallback.
+**Gating rule (now satisfied):** Phase C was gated on Phase A passing; Phase A passed
+and the legacy stack was already removed, so **Phase C is obsolete**. Phase B (deploy)
+is independent and ready to run.
 
 ---
 
-## Phase A — Local End-to-End Validation (the gate)
+## Phase A — Local End-to-End Validation (the gate) — ✅ DONE
+
+> **Complete (2026-06-27).** Rows 1–6 are automated by the Playwright **web e2e**
+> (`apps/mobile/e2e/`); the kill/reopen reconnect + durability rows and the full
+> three-stage flow were validated by the **manual two-device LAN matrix** (cross-device
+> plan, `2026-06-26-cross-device-gameplay.md`); and a **smoke** device gate
+> (`.github/workflows/device.yml`) keeps the Hermes-boot check green on every PR.
+> (Push on-device remains deferred — it needs an Expo Dev Build.) Steps retained below
+> for reference.
 
 **Goal:** Prove register → login → create/join → start → play → push → reconnect →
 persistence works against a locally-running Worker, from at least two clients.
@@ -163,6 +179,10 @@ if still on the crashing Windows/workerd build.
 
 ## Phase B — Cloudflare Provisioning & Deploy
 
+> **Superseded by the dedicated runbook `docs/superpowers/plans/2026-06-27-phase-b-deploy.md`**
+> (decisions: deploy to a workers.dev subdomain; defer the Expo Dev Build + push).
+> The steps below remain accurate background; run the dated runbook.
+
 **Goal:** Create the real D1 + KV resources, wire them into `wrangler.toml`, apply the
 remote schema, and deploy the Worker. Set up an Expo dev build so push works on device.
 
@@ -224,10 +244,14 @@ event from another client and confirm the targeted user receives a push.
 
 ---
 
-## Phase C — Cutover & Cleanup (Phase 6)
+## Phase C — Cutover & Cleanup (Phase 6) — ✅ OBSOLETE / DONE
 
-**Goal:** Remove the legacy stack and refresh user-facing docs. **Only after Phase A
-passes** (and ideally Phase B is deployed).
+> **This phase is complete and no longer actionable.** The legacy `frontend/` (Vue
+> PWA) and `backend/` (FastAPI/Redis/Postgres) stacks were removed and the docs
+> refreshed; the new stack is the only stack. Kept for history. The steps below are
+> retained for reference only.
+
+**Goal (historical):** Remove the legacy stack and refresh user-facing docs.
 
 **Files:**
 - Delete: `frontend/`, `backend/`, `docker-compose.yml`
