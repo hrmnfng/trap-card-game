@@ -82,7 +82,9 @@ export default function LobbyScreen() {
       <Text style={styles.status}>
         {connectionStatus === 'open'
           ? `${players.length} player${players.length === 1 ? '' : 's'} in lobby`
-          : `Connection: ${connectionStatus}`}
+          : connectionStatus === 'unreachable'
+            ? "Can't reach the server — retrying…"
+            : `Connection: ${connectionStatus}`}
       </Text>
       <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
