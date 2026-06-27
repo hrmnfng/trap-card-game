@@ -14,6 +14,7 @@ import { api } from '../src/lib/apiSingleton';
 import { registerForPushNotifications } from '../src/lib/push';
 import { colors } from '../src/lib/theme';
 import { PressableScale } from '../src/ui/PressableScale';
+import { Screen } from '../src/ui/Screen';
 
 type Mode = 'login' | 'register';
 
@@ -38,63 +39,65 @@ export default function LoginScreen() {
   };
 
   return (
-    <MotiView
-      style={styles.container}
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 260 }}
-    >
-      <Text style={styles.heading}>
-        {mode === 'login' ? 'Sign in' : 'Create an account'}
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor={colors.muted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <PressableScale
-        testID="auth-submit"
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={submit}
-        disabled={loading}
+    <Screen>
+      <MotiView
+        style={styles.container}
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 260 }}
       >
-        {loading ? (
-          <ActivityIndicator color={colors.primaryText} />
-        ) : (
-          <Text style={styles.buttonText}>
-            {mode === 'login' ? 'Sign in' : 'Register'}
-          </Text>
-        )}
-      </PressableScale>
-
-      <Pressable
-        testID="auth-toggle"
-        style={styles.linkButton}
-        onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
-      >
-        <Text style={styles.linkText}>
-          {mode === 'login'
-            ? "Don't have an account? Register"
-            : 'Already have an account? Sign in'}
+        <Text style={styles.heading}>
+          {mode === 'login' ? 'Sign in' : 'Create an account'}
         </Text>
-      </Pressable>
-    </MotiView>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          placeholderTextColor={colors.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={username}
+          onChangeText={setUsername}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={colors.muted}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <PressableScale
+          testID="auth-submit"
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={submit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={styles.buttonText}>
+              {mode === 'login' ? 'Sign in' : 'Register'}
+            </Text>
+          )}
+        </PressableScale>
+
+        <Pressable
+          testID="auth-toggle"
+          style={styles.linkButton}
+          onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
+        >
+          <Text style={styles.linkText}>
+            {mode === 'login'
+              ? "Don't have an account? Register"
+              : 'Already have an account? Sign in'}
+          </Text>
+        </Pressable>
+      </MotiView>
+    </Screen>
   );
 }
 

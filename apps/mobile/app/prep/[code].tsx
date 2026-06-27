@@ -13,6 +13,7 @@ import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PressableScale } from '../../src/ui/PressableScale';
+import { Screen } from '../../src/ui/Screen';
 import { screenForState } from '../../src/lib/navigation';
 
 export default function PrepScreen() {
@@ -73,7 +74,7 @@ export default function PrepScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Author your traps</Text>
         <Text style={styles.subtle}>
@@ -147,7 +148,7 @@ export default function PrepScreen() {
       ) : (
         <Text style={styles.subtleFooter}>Waiting for the host to begin…</Text>
       )}
-    </View>
+    </Screen>
   );
 }
 

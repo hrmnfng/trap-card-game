@@ -7,6 +7,7 @@ import { gameStore } from '../../src/state/game';
 import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PressableScale } from '../../src/ui/PressableScale';
+import { Screen } from '../../src/ui/Screen';
 import { screenForState } from '../../src/lib/navigation';
 
 const MIN_PLAYERS = 2;
@@ -69,77 +70,79 @@ export default function LobbyScreen() {
   };
 
   return (
-    <MotiView
-      style={styles.container}
-      from={{ opacity: 0, translateY: 8 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 260 }}
-    >
-      <Pressable onPress={copyCode} testID="copy-code">
-        <Text style={styles.code}>Lobby {code}</Text>
-        <Text style={styles.copyHint}>{copied ? 'Copied!' : 'Tap to copy'}</Text>
-      </Pressable>
-      <Text style={styles.status}>
-        {connectionStatus === 'open'
-          ? `${players.length} player${players.length === 1 ? '' : 's'} in lobby`
-          : connectionStatus === 'unreachable'
-            ? "Can't reach the server — retrying…"
-            : `Connection: ${connectionStatus}`}
-      </Text>
-      <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <FlatList
-        style={styles.list}
-        data={players}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <View style={styles.playerRow}>
-            <Text style={styles.playerName}>
-              {item.isOnline ? '🟢 ' : '⚪ '}
-              {item.username}
-              {item.id === gameState?.ownerId ? '  (host)' : ''}
-              {item.id === userId ? '  (you)' : ''}
-            </Text>
-            <Text style={item.isReady ? styles.ready : styles.notReady}>
-              {item.isReady ? 'Ready' : 'Not ready'}
-            </Text>
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.subtle}>Waiting for players…</Text>}
-      />
-
-      <PressableScale
-        testID="ready-toggle"
-        style={[styles.button, iAmReady && styles.buttonSecondary]}
-        onPress={() => gameStore.getState().setReady(!iAmReady)}
+    <Screen>
+      <MotiView
+        style={styles.container}
+        from={{ opacity: 0, translateY: 8 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 260 }}
       >
-        <Text style={styles.buttonText}>{iAmReady ? "I'm not ready" : "I'm ready"}</Text>
-      </PressableScale>
+        <Pressable onPress={copyCode} testID="copy-code">
+          <Text style={styles.code}>Lobby {code}</Text>
+          <Text style={styles.copyHint}>{copied ? 'Copied!' : 'Tap to copy'}</Text>
+        </Pressable>
+        <Text style={styles.status}>
+          {connectionStatus === 'open'
+            ? `${players.length} player${players.length === 1 ? '' : 's'} in lobby`
+            : connectionStatus === 'unreachable'
+              ? "Can't reach the server — retrying…"
+              : `Connection: ${connectionStatus}`}
+        </Text>
+        <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {isOwner ? (
+        <FlatList
+          style={styles.list}
+          data={players}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) => (
+            <View style={styles.playerRow}>
+              <Text style={styles.playerName}>
+                {item.isOnline ? '🟢 ' : '⚪ '}
+                {item.username}
+                {item.id === gameState?.ownerId ? '  (host)' : ''}
+                {item.id === userId ? '  (you)' : ''}
+              </Text>
+              <Text style={item.isReady ? styles.ready : styles.notReady}>
+                {item.isReady ? 'Ready' : 'Not ready'}
+              </Text>
+            </View>
+          )}
+          ListEmptyComponent={<Text style={styles.subtle}>Waiting for players…</Text>}
+        />
+
         <PressableScale
-          testID="start-game"
-          style={[styles.button, !canStart && styles.buttonDisabled]}
-          onPress={() => gameStore.getState().startPrep()}
-          disabled={!canStart}
+          testID="ready-toggle"
+          style={[styles.button, iAmReady && styles.buttonSecondary]}
+          onPress={() => gameStore.getState().setReady(!iAmReady)}
         >
-          <Text style={styles.buttonText}>
-            {canStart
-              ? 'Start (author cards)'
-              : players.length < MIN_PLAYERS
-                ? `Need ${MIN_PLAYERS}+ players`
-                : 'Waiting for all to ready'}
-          </Text>
+          <Text style={styles.buttonText}>{iAmReady ? "I'm not ready" : "I'm ready"}</Text>
         </PressableScale>
-      ) : (
-        <Text style={styles.subtle}>Waiting for the host to start…</Text>
-      )}
 
-      <Pressable style={styles.linkButton} onPress={leave}>
-        <Text style={styles.linkText}>Leave lobby</Text>
-      </Pressable>
-    </MotiView>
+        {isOwner ? (
+          <PressableScale
+            testID="start-game"
+            style={[styles.button, !canStart && styles.buttonDisabled]}
+            onPress={() => gameStore.getState().startPrep()}
+            disabled={!canStart}
+          >
+            <Text style={styles.buttonText}>
+              {canStart
+                ? 'Start (author cards)'
+                : players.length < MIN_PLAYERS
+                  ? `Need ${MIN_PLAYERS}+ players`
+                  : 'Waiting for all to ready'}
+            </Text>
+          </PressableScale>
+        ) : (
+          <Text style={styles.subtle}>Waiting for the host to start…</Text>
+        )}
+
+        <Pressable style={styles.linkButton} onPress={leave}>
+          <Text style={styles.linkText}>Leave lobby</Text>
+        </Pressable>
+      </MotiView>
+    </Screen>
   );
 }
 

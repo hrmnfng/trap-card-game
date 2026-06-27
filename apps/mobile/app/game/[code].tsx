@@ -15,6 +15,7 @@ import { colors } from '../../src/lib/theme';
 import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { Celebration } from '../../src/ui/Celebration';
+import { Screen } from '../../src/ui/Screen';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -74,7 +75,7 @@ export default function GameScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.section}>Opponents</Text>
         <Text style={styles.hint}>
@@ -169,7 +170,7 @@ export default function GameScreen() {
           <Text style={styles.linkText}>Leave game</Text>
         </Pressable>
       )}
-    </View>
+    </Screen>
   );
 }
 
