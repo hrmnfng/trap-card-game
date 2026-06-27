@@ -40,6 +40,14 @@ Workers/D1/KV, Wrangler, Vitest.
 and the legacy stack was already removed, so **Phase C is obsolete**. Phase B (deploy)
 is independent and ready to run.
 
+> **iOS distribution — open future decision.** Android ships as a sideloaded native
+> preview APK (with push). For iOS, two paths to weigh later: **native** (Apple
+> Developer Program $99/yr, reuses the Expo push stack) vs a **PWA** (free — the
+> existing web build is installable via Safari "Add to Home Screen", but native push
+> doesn't apply; iOS Web Push 16.4+ is a separate service-worker/VAPID build, and
+> foreground-limited). Likely a hybrid: Android native + iOS PWA. The Android plan is
+> unaffected. See `2026-06-27-android-preview-build-push.md`.
+
 ---
 
 ## Phase A — Local End-to-End Validation (the gate) — ✅ DONE
