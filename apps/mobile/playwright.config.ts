@@ -26,7 +26,9 @@ export default defineConfig({
   // Two-client tests share lobby state on a single Worker — never parallelise.
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // The suite drives real WebSocket round-trips; one retry absorbs the occasional
+  // timing flake on slow CI runners without masking real failures locally.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${WEB_PORT}`,

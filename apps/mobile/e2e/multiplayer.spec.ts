@@ -97,12 +97,13 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     await expect(vis(guest.getByTestId('opponent').getByText(hostUser))).toBeVisible();
     await expect(vis(host.getByTestId('opponent').getByText(guestUser))).toBeVisible();
 
-    // A winner is named when a hand empties (I8). The host plays their two
-    // remaining cards onto the guest, emptying their hand and concluding the
-    // game; both clients show the winner banner naming the first-to-empty.
-    for (let i = 0; i < 2; i++) {
+    // A winner is named when a hand empties (I8). The host has 2 cards here; play
+    // them to 0, asserting the hand shrinks after each play so the next selection
+    // can't race an un-applied state update (which dropped a play on slow CI).
+    for (let remaining = 1; remaining >= 0; remaining--) {
       await vis(host.getByTestId('hand-card')).first().click();
       await vis(host.getByTestId('opponent')).first().click();
+      await expect(vis(host.getByTestId('hand-card'))).toHaveCount(remaining);
     }
     await expect(vis(host.getByText(/sprung all your traps first/i))).toBeVisible();
     await expect(
