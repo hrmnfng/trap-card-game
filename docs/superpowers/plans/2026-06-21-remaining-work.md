@@ -37,7 +37,7 @@ Workers/D1/KV, Wrangler, Vitest.
 | `apps/mobile` (Expo app) | ✅ ~44 unit tests + typecheck; web e2e (Playwright) green |
 | End-to-end validation | ✅ web e2e (tier 2) + smoke device gate (tier 3) green; **manual two-device LAN matrix passed 2026-06-27** |
 | Cloudflare resources (D1 id, KV id) provisioned | ✅ real ids committed in `wrangler.toml` |
-| Worker deployed | ⏳ confirm against the runbook checklist (`2026-06-27-phase-b-deploy.md`) |
+| Worker deployed | ✅ confirmed 2026-07-02 (runbook `2026-06-27-phase-b-deploy.md`) |
 | Auth session persistence (survives app/page restart) | ✅ fixed 2026-07-02 — lazy storage binding + web `localStorage` backend; reload e2e |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
 | Android sideload (preview APK) + push | ⏳ in progress — runbook `2026-06-27-android-preview-build-push.md` (EAS preview APK + Firebase/FCM; no store/fees; iOS deferred) |
@@ -47,10 +47,10 @@ Workers/D1/KV, Wrangler, Vitest.
 and the legacy stack was already removed, so **Phase C is obsolete**. Phase B (deploy)
 is independent and ready to run.
 
-> **iOS distribution — open future decision.** Android ships as a sideloaded native
-> preview APK (with push). For iOS, two paths to weigh later: **native** (Apple
-> Developer Program $99/yr, reuses the Expo push stack) vs a **PWA** (free, but not
-> zero work — reviewed 2026-07-02):
+> **iOS distribution — DECIDED 2026-07-02: PWA.** Android ships as a sideloaded
+> native preview APK (with push). For iOS the PWA path is a go (native — Apple
+> Developer Program $99/yr — was declined); scope of the PWA work, from the
+> 2026-07-02 review:
 >
 > - **Install shell missing.** The web build is a bare Metro SPA (no manifest, icons,
 >   or service worker), so "Add to Home Screen" today yields a Safari bookmark, not a
@@ -347,7 +347,10 @@ git commit -m "chore: cut over to Expo + Cloudflare; remove legacy Vue/FastAPI s
 
 **Goal:** Add the deferred visual polish using `@react-three/fiber/native` + `expo-gl`
 so effects run on both mobile and web. **Deferred** until functional parity is proven;
-do not start before Phases A–C.
+do not start before Phases A–C. **Still deferred as of 2026-07-02:** with iOS served
+as a PWA, effects must be validated in Safari/WebKit (standalone mode) as a
+first-class target, which may change which libraries/approaches below are viable —
+revisit this outline once the PWA ships.
 
 This phase is an outline (not bite-sized steps) because the effects are creative and
 should be brainstormed before implementation. Acceptance is visual + "no regression in
