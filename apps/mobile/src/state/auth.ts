@@ -44,14 +44,17 @@ function errorMessage(err: unknown): string {
 }
 
 export function createAuthStore(deps: AuthStoreDeps = {}): StoreApi<AuthState> {
-  const storage = deps.storage ?? getStorage();
+  // Resolve per operation, never at creation: the app singleton below is
+  // created by import before _layout.tsx has called configureStorage(), so
+  // capturing getStorage() here would pin the default MemoryStorage forever.
+  const storage = (): KVStorage => deps.storage ?? getStorage();
   let store: StoreApi<AuthState>;
   const api =
     deps.api ?? new ApiClient({ getToken: () => store.getState().token });
 
   store = createStore<AuthState>((set) => {
     const applyAuth = async (res: AuthResponse): Promise<void> => {
-      await storage.setItem(AUTH_TOKEN_KEY, res.token);
+      await storage().setItem(AUTH_TOKEN_KEY, res.token);
       set({ userId: res.userId, username: res.username, token: res.token });
     };
 
@@ -83,12 +86,12 @@ export function createAuthStore(deps: AuthStoreDeps = {}): StoreApi<AuthState> {
         runAuth(() => api.login(username, password)),
 
       async logout() {
-        await storage.removeItem(AUTH_TOKEN_KEY);
+        await storage().removeItem(AUTH_TOKEN_KEY);
         set({ userId: null, username: null, token: null, error: null });
       },
 
       async restoreSession() {
-        const token = await storage.getItem(AUTH_TOKEN_KEY);
+        const token = await storage().getItem(AUTH_TOKEN_KEY);
         if (!token) return false;
         // Set the token first so the API client authenticates the `me` call.
         set({ token });
@@ -97,7 +100,7 @@ export function createAuthStore(deps: AuthStoreDeps = {}): StoreApi<AuthState> {
           set({ userId: user.userId, username: user.username, token });
           return true;
         } catch {
-          await storage.removeItem(AUTH_TOKEN_KEY);
+          await storage().removeItem(AUTH_TOKEN_KEY);
           set({ userId: null, username: null, token: null });
           return false;
         }

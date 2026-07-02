@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   createAuthStore,
   AUTH_TOKEN_KEY,
   selectIsAuthenticated,
 } from './auth';
-import { MemoryStorage } from '../lib/storage';
+import { MemoryStorage, configureStorage } from '../lib/storage';
 import type { ApiClient } from '../lib/apiClient';
 
 function fakeApi(impl: Partial<ApiClient>): ApiClient {
@@ -12,6 +12,29 @@ function fakeApi(impl: Partial<ApiClient>): ApiClient {
 }
 
 describe('auth store', () => {
+  // The process-wide storage is module state; reset it so tests that configure
+  // it don't leak into each other.
+  afterEach(() => {
+    configureStorage(new MemoryStorage());
+  });
+
+  it('resolves the process-wide storage at call time, not store creation', async () => {
+    // Regression: _layout.tsx calls configureStorage() in its module body,
+    // which runs AFTER the authStore singleton is created by import. The store
+    // must pick up the late-configured backend, not a captured default.
+    const late = new MemoryStorage();
+    const api = fakeApi({
+      login: vi
+        .fn()
+        .mockResolvedValue({ userId: 'u1', username: 'alice', token: 't1' }),
+    });
+    const store = createAuthStore({ api }); // no storage injected
+    configureStorage(late); // wired after creation, as _layout.tsx does
+
+    await store.getState().login('alice', 'password1');
+
+    expect(await late.getItem(AUTH_TOKEN_KEY)).toBe('t1');
+  });
   it('register stores the token and authenticates', async () => {
     const storage = new MemoryStorage();
     const api = fakeApi({
