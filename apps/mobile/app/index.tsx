@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   SectionList,
   StyleSheet,
@@ -100,8 +101,11 @@ export default function HomeScreen() {
   // Re-load on browser back-navigation. The popstate event fires in all engines
   // (including WebKit) when history.go(-1) pops a history entry; we fire
   // unconditionally — a refetch while the screen is hidden is harmless.
+  // Web only: on native Hermes `window` exists (it aliases the global) but has
+  // no DOM event API, so calling window.addEventListener would crash Home on
+  // mount (caught by the Maestro smoke gate).
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (Platform.OS !== 'web') return;
     const onPopState = () => {
       doFetchHistory();
     };

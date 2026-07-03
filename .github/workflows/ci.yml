@@ -68,8 +68,8 @@ jobs:
         run: npm run build --workspace=@trap/shared
       # Playwright drives the Expo web build against a live local Worker; the
       # webServer block in playwright.config.ts starts wrangler dev + expo web.
-      - name: Install Playwright (chromium)
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright (chromium + webkit)
+        run: npx playwright install --with-deps chromium webkit
         working-directory: apps/mobile
       - name: e2e
         run: npm run test:e2e
