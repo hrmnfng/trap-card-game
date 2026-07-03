@@ -23,6 +23,12 @@ Workers/D1/KV, Wrangler, Vitest.
 > lobby grouping, and the device gate scoped to smoke. **Phase A is done, Phase C is
 > obsolete (legacy already removed), and Phase B (deploy) is the active milestone** —
 > now broken out into its own runbook: **`docs/superpowers/plans/2026-06-27-phase-b-deploy.md`**.
+>
+> **2026-07-02:** the iOS note below was reviewed and corrected (iOS Web Push *is*
+> background-capable; the old "foreground-limited" claim was wrong), and the
+> auth-storage lazy-binding bug it surfaced was fixed — sessions now survive app/page
+> restarts on all platforms (web persists via a new `localStorage` backend, covered
+> by a reload e2e test).
 
 | Area | State |
 |------|-------|
@@ -30,8 +36,9 @@ Workers/D1/KV, Wrangler, Vitest.
 | `apps/party` (Worker, LobbyDO, auth, push) | ✅ ~45 tests pass, WS-transport tests `.skip` (test-pool segfault) |
 | `apps/mobile` (Expo app) | ✅ ~44 unit tests + typecheck; web e2e (Playwright) green |
 | End-to-end validation | ✅ web e2e (tier 2) + smoke device gate (tier 3) green; **manual two-device LAN matrix passed 2026-06-27** |
-| Cloudflare resources (D1 id, KV id) provisioned | ❌ `wrangler.toml` still has `REPLACE_WITH_*` placeholders → **Phase B** |
-| Worker deployed | ❌ → **Phase B** (`2026-06-27-phase-b-deploy.md`) |
+| Cloudflare resources (D1 id, KV id) provisioned | ✅ real ids committed in `wrangler.toml` |
+| Worker deployed | ✅ confirmed 2026-07-02 (runbook `2026-06-27-phase-b-deploy.md`) |
+| Auth session persistence (survives app/page restart) | ✅ fixed 2026-07-02 — lazy storage binding + web `localStorage` backend; reload e2e |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
 | Android sideload (preview APK) + push | ⏳ in progress — runbook `2026-06-27-android-preview-build-push.md` (EAS preview APK + Firebase/FCM; no store/fees; iOS deferred) |
 | Graphics polish | ❌ (Phase D, deferred/low priority) |
@@ -40,13 +47,31 @@ Workers/D1/KV, Wrangler, Vitest.
 and the legacy stack was already removed, so **Phase C is obsolete**. Phase B (deploy)
 is independent and ready to run.
 
-> **iOS distribution — open future decision.** Android ships as a sideloaded native
-> preview APK (with push). For iOS, two paths to weigh later: **native** (Apple
-> Developer Program $99/yr, reuses the Expo push stack) vs a **PWA** (free — the
-> existing web build is installable via Safari "Add to Home Screen", but native push
-> doesn't apply; iOS Web Push 16.4+ is a separate service-worker/VAPID build, and
-> foreground-limited). Likely a hybrid: Android native + iOS PWA. The Android plan is
-> unaffected. See `2026-06-27-android-preview-build-push.md`.
+> **iOS distribution — DECIDED 2026-07-02: PWA.** Android ships as a sideloaded
+> native preview APK (with push). For iOS the PWA path is a go (native — Apple
+> Developer Program $99/yr — was declined); scope of the PWA work, from the
+> 2026-07-02 review:
+>
+> - **Install shell missing.** The web build is a bare Metro SPA (no manifest, icons,
+>   or service worker), so "Add to Home Screen" today yields a Safari bookmark, not a
+>   standalone app. Needs a `public/` manifest + icons (small, well-trodden).
+> - **Web token persistence** requires a `localStorage` storage backend
+>   (`expo-secure-store` has no web implementation) — done alongside the
+>   auth-storage lazy-binding fix.
+> - **Push is the expensive half.** Expo's push service cannot reach browsers; web
+>   push is a separate pipeline (service worker + VAPID subscribe on the client, Web
+>   Push protocol from the Worker, a `'web'` device platform). Note iOS 16.4+ Web
+>   Push **does deliver in the background** (lock screen, app closed) for
+>   home-screen-installed apps — the real constraints are install-first and
+>   user-gesture permission, not foreground-only.
+> - **Suggested shape:** ship PWA v1 *without* push (the game is live over WS while
+>   open, and reconnect is already validated); decide web push separately. Host the
+>   `expo export` output from the same Worker via static assets (same origin, one
+>   deploy). Add a WebKit Playwright project + one real-iPhone standalone-mode pass
+>   before calling it product.
+>
+> Likely a hybrid: Android native + iOS PWA. The Android plan is unaffected.
+> See `2026-06-27-android-preview-build-push.md`.
 
 ---
 
@@ -322,7 +347,10 @@ git commit -m "chore: cut over to Expo + Cloudflare; remove legacy Vue/FastAPI s
 
 **Goal:** Add the deferred visual polish using `@react-three/fiber/native` + `expo-gl`
 so effects run on both mobile and web. **Deferred** until functional parity is proven;
-do not start before Phases A–C.
+do not start before Phases A–C. **Still deferred as of 2026-07-02:** with iOS served
+as a PWA, effects must be validated in Safari/WebKit (standalone mode) as a
+first-class target, which may change which libraries/approaches below are viable —
+revisit this outline once the PWA ships.
 
 This phase is an outline (not bite-sized steps) because the effects are creative and
 should be brainstormed before implementation. Acceptance is visual + "no regression in
