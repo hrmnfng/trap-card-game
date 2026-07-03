@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { MotiView } from 'moti';
 import type { LobbyHistoryItem } from '@trap/shared';
 import { normalizeLobbyCode } from '@trap/shared';
@@ -64,27 +64,44 @@ export default function HomeScreen() {
     });
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!isAuthenticated) return;
-      let active = true;
-      setLoadingHistory(true);
-      api
-        .listLobbyHistory()
-        .then((items) => {
-          if (active) setHistory(items);
-        })
-        .catch(() => {
-          if (active) setHistory([]);
-        })
-        .finally(() => {
-          if (active) setLoadingHistory(false);
-        });
-      return () => {
-        active = false;
-      };
-    }, [isAuthenticated])
-  );
+  // Fetch (or re-fetch) the lobby history.
+  //
+  // Why not useFocusEffect: WebKit does not reliably emit React Navigation focus
+  // events after browser back-navigation, so the lobby list stayed stale on
+  // return to Home (caught by the WebKit e2e project).
+  //
+  // Fix: fetch on mount/auth-change (via the useEffect below), plus a popstate
+  // listener that refetches unconditionally on any history pop. A spurious
+  // refetch while Home is unfocused is harmless — cheap GET, state updates on a
+  // mounted-but-hidden screen.
+  const doFetchHistory = useCallback(() => {
+    if (!isAuthenticated) return;
+    setLoadingHistory(true);
+    api
+      .listLobbyHistory()
+      .then((items) => setHistory(items))
+      .catch(() => setHistory([]))
+      .finally(() => setLoadingHistory(false));
+  }, [isAuthenticated]);
+
+  // Initial load and re-load whenever auth state changes.
+  useEffect(() => {
+    doFetchHistory();
+  }, [doFetchHistory]);
+
+  // Re-load on browser back-navigation. The popstate event fires in all engines
+  // (including WebKit) when history.go(-1) pops a history entry; we fire
+  // unconditionally — a refetch while the screen is hidden is harmless.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = () => {
+      doFetchHistory();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [doFetchHistory]);
 
   const openLobby = (item: LobbyHistoryItem) => {
     if (item.status === 'concluded') return;
