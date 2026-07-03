@@ -25,9 +25,10 @@ config.resolver.nodeModulesPaths = Array.from(
 // "import" condition, which breaks under Metro's Node rendering during
 // `expo export --platform web` (the interop leaves the default import
 // undefined). Same library, CJS flavor, works in every context.
+const tslibCjs = require.resolve('tslib');
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'tslib') {
-    return { type: 'sourceFile', filePath: require.resolve('tslib') };
+    return { type: 'sourceFile', filePath: tslibCjs };
   }
   return context.resolveRequest(context, moduleName, platform);
 };

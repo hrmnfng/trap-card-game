@@ -40,6 +40,8 @@ export default defineConfig({
       command: 'npm run db:apply:local && npx wrangler dev --ip 127.0.0.1 --port 8787',
       cwd: '../party',
       port: WORKER_PORT,
+      // NOTE: an already-running wrangler dev serves the assets it read at
+      // startup — restart it after re-exporting, or you'll test a stale build.
       reuseExistingServer: true,
       timeout: 120_000,
     },
