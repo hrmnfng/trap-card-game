@@ -36,7 +36,13 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // WebKit approximates iOS Safari — the PWA's engine. Nothing else in the
+  // toolchain ever runs this app in WebKit, so keep both engines on the full
+  // suite (sequential; workers: 1 above still applies).
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
   webServer: [
     {
       // Apply the local D1 schema, then serve the Worker. Skipped entirely when

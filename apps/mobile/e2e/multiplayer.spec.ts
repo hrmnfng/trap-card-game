@@ -145,6 +145,13 @@ test('a created lobby appears under the Active section on Home', async ({ page }
   await page.waitForURL(/\/lobby\/[A-Z0-9]+/);
   const code = new URL(page.url()).pathname.split('/lobby/')[1]!;
 
+  // waitForURL resolves the moment the URL changes — which races with the
+  // WebSocket upgrade, especially in WebKit. The server only writes the lobby
+  // to the user's history once the WS join fires (LobbyDO.onConnect). Waiting
+  // for the connection-status line ("1 player in lobby") confirms the WS is
+  // open and the history row has been recorded before we navigate back.
+  await expect(vis(page.getByText(/\d+ player.* in lobby/i))).toBeVisible();
+
   await page.goBack();
   await expect(vis(page.getByText(`Welcome, ${user}`))).toBeVisible();
   await expect(vis(page.getByText('Active'))).toBeVisible();

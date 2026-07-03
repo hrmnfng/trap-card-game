@@ -14,6 +14,8 @@
     "**/node_modules/**",
     "**/.expo/**", // Expo-generated, git-ignored
     ".claude/**", // installed plugin skills, not our docs
-    "docs/superpowers/**" // tool-generated plans/specs, not hand-maintained prose
+    "docs/superpowers/**", // tool-generated plans/specs, not hand-maintained prose
+    "**/playwright-report/**", // Playwright auto-generated HTML report
+    "**/test-results/**" // Playwright auto-generated test artifacts
   ]
 }
