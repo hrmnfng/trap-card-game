@@ -135,6 +135,36 @@ test('joining a non-existent code does not navigate into a lobby', async ({ page
 });
 
 /**
+ * #3b: returning Home via the in-app "Leave lobby" button (router.replace('/'))
+ * still shows the lobby under the Active section. router.replace does not fire
+ * popstate, so the popstate listener alone is insufficient — this test guards
+ * the useFocusEffect path.
+ */
+test('a created lobby appears under Active after leaving via in-app Leave button', async ({
+  page,
+}) => {
+  const user = uniqueUser('leave');
+  await registerAndLand(page, user);
+
+  await vis(page.getByTestId('create-lobby')).click();
+  await page.waitForURL(/\/lobby\/[A-Z0-9]+/);
+  const code = new URL(page.url()).pathname.split('/lobby/')[1]!;
+
+  // Wait for the WS to open before leaving — same sync as the existing test
+  // (#3), ensuring the history row has been recorded server-side.
+  await expect(vis(page.getByText(/\d+ player.* in lobby/i))).toBeVisible();
+
+  // Leave via the in-app button. This calls router.replace('/'), which does NOT
+  // fire popstate — only useFocusEffect covers this navigation path.
+  await vis(page.getByText('Leave lobby')).click();
+
+  // Should land on Home and see the lobby under Active.
+  await expect(vis(page.getByText(`Welcome, ${user}`))).toBeVisible();
+  await expect(vis(page.getByText('Active'))).toBeVisible();
+  await expect(vis(page.getByText(code))).toBeVisible();
+});
+
+/**
  * #3: a freshly created lobby is listed under the "Active" section back on Home.
  */
 test('a created lobby appears under the Active section on Home', async ({ page }) => {

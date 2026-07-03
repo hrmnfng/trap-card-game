@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { MotiView } from 'moti';
 import type { LobbyHistoryItem } from '@trap/shared';
 import { normalizeLobbyCode } from '@trap/shared';
@@ -66,14 +66,16 @@ export default function HomeScreen() {
 
   // Fetch (or re-fetch) the lobby history.
   //
-  // Why not useFocusEffect: WebKit does not reliably emit React Navigation focus
-  // events after browser back-navigation, so the lobby list stayed stale on
-  // return to Home (caught by the WebKit e2e project).
-  //
-  // Fix: fetch on mount/auth-change (via the useEffect below), plus a popstate
-  // listener that refetches unconditionally on any history pop. A spurious
-  // refetch while Home is unfocused is harmless — cheap GET, state updates on a
-  // mounted-but-hidden screen.
+  // Two complementary triggers cover every return-to-Home path:
+  //   useFocusEffect — fires on initial mount and whenever the screen regains
+  //     focus via in-app navigation (e.g. router.replace('/') from Leave).
+  //     The callback is recreated when isAuthenticated changes, so a fresh
+  //     login also triggers a refetch.
+  //   popstate listener — fires when the browser pops a history entry (back /
+  //     forward button). Covers WebKit, which does not reliably emit React
+  //     Navigation focus events after browser back-navigation.
+  // A duplicate fetch when both fire on the same navigation is a cheap
+  // idempotent GET.
   const doFetchHistory = useCallback(() => {
     if (!isAuthenticated) return;
     setLoadingHistory(true);
@@ -84,10 +86,16 @@ export default function HomeScreen() {
       .finally(() => setLoadingHistory(false));
   }, [isAuthenticated]);
 
-  // Initial load and re-load whenever auth state changes.
-  useEffect(() => {
-    doFetchHistory();
-  }, [doFetchHistory]);
+  // Refresh on focus (fires on initial mount and on in-app navigation, e.g.
+  // router.replace('/') from Leave). WebKit does not reliably emit focus events
+  // after *browser* back-navigation, so a popstate listener below covers that
+  // path; between the two, every return to Home refetches. A duplicate fetch
+  // when both fire is a cheap idempotent GET.
+  useFocusEffect(
+    useCallback(() => {
+      doFetchHistory();
+    }, [doFetchHistory])
+  );
 
   // Re-load on browser back-navigation. The popstate event fires in all engines
   // (including WebKit) when history.go(-1) pops a history entry; we fire
