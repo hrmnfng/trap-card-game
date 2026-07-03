@@ -195,6 +195,13 @@ export class LobbyDO extends Server<Env> {
     room = result.state;
     await this.saveRoom(room);
 
+    // Record the membership row before any state_update goes out: clients (and
+    // the e2e suite) treat the first state_update as "the server has seen me in
+    // this lobby", so the history row must already exist by then.
+    if (wasNew) {
+      await recordLobbyHistory(this.env, room);
+    }
+
     connection.setState({ playerId, username });
 
     // Welcome + initial state.
@@ -220,7 +227,6 @@ export class LobbyDO extends Server<Env> {
       });
       // Refresh everyone's state so counts reflect the new member.
       await this.broadcastState(room);
-      await recordLobbyHistory(this.env, room);
     }
   }
 
