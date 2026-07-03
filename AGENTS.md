@@ -260,6 +260,15 @@ Expo-Router-on-web behaviours bite naive selectors (both handled in `e2e/helpers
 Components get `testID`s (e.g. `create-lobby`, `hand-card`), which react-native-web
 renders as `data-testid`, so `getByTestId` works against the same native components.
 
+### Worker static assets: `run_worker_first` is load-bearing
+
+- **`[assets].run_worker_first` in `apps/party/wrangler.toml` is load-bearing.**
+  The Worker serves the exported web build (`apps/mobile/dist`) as static assets
+  with SPA fallback; without `run_worker_first = ["/api/*", "/parties/*"]` the
+  fallback would answer API calls and the WebSocket upgrade with `index.html`.
+  `apps/mobile/dist/.gitkeep` keeps the directory present so `wrangler dev`
+  works before an export exists.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

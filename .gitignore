@@ -28,6 +28,11 @@ firebase-credentials.json
 # Node / workspaces
 node_modules/
 dist/
+# ...but keep apps/mobile/dist present (empty) so wrangler's [assets] block
+# works before an export exists. Contents stay ignored.
+!apps/mobile/dist/
+apps/mobile/dist/*
+!apps/mobile/dist/.gitkeep
 *.tsbuildinfo
 
 # Cloudflare
