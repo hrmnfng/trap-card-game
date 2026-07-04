@@ -11,7 +11,10 @@ import { defineConfig, devices } from '@playwright/test';
  *
  *   $env:EXPO_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8787'
  *   $env:EXPO_PUBLIC_PARTY_HOST = '127.0.0.1:8787'
- *   npx expo export --platform web
+ *   npx expo export --platform web --clear
+ *
+ * `--clear` is required: EXPO_PUBLIC_* values are inlined at Metro transform
+ * time and cached, so without it the export can keep a previous export's URLs.
  *
  * Then: npx playwright test --config playwright.exported.config.ts
  */
