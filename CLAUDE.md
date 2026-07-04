@@ -18,6 +18,11 @@ The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks 
   addressing, the workers test-pool limits, the Expo-free mobile core). Read before editing.
 - **`plans/2026-06-21-migration-expo-cloudflare.md`** — the overall migration plan and status.
 - **`plans/2026-06-21-remaining-work.md`** — the executable plan for what's left.
+- **`docs/runsheets/`** — operational runbooks (Cloudflare setup, Android
+  deploy, PWA deploy). Releases are normally automated by
+  `.github/workflows/release.yml` (production = root `package.json` version
+  bump on main; preview = manual dispatch, **Android-only** — the PWA has no
+  preview environment).
 
 ## Commands
 
