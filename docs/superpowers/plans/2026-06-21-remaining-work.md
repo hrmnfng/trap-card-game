@@ -40,8 +40,8 @@ Workers/D1/KV, Wrangler, Vitest.
 | Worker deployed | ✅ confirmed 2026-07-02 (runbook `2026-06-27-phase-b-deploy.md`) |
 | Auth session persistence (survives app/page restart) | ✅ fixed 2026-07-02 — lazy storage binding + web `localStorage` backend; reload e2e |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
-| Android sideload (preview APK) + push | ⏳ in progress — runbook `2026-06-27-android-preview-build-push.md` (EAS preview APK + Firebase/FCM; no store/fees; iOS deferred) |
-| iOS PWA v1 (install shell + Worker hosting + WebKit e2e) | ✅ implementation landed 2026-07-03 on `feat/ios-pwa` (manifest/icons/`+html.tsx`, static export, Worker `[assets]` hosting, WebKit + exported-build suites green); **remaining:** owner runs `2026-07-03-ios-pwa-rollout.md` (deploy + iPhone checklist) |
+| Android sideload (preview APK) + push | ✅ **done 2026-07-04** — APK sideloaded, push validated end-to-end on-device; full checklist ticked in `2026-06-27-android-preview-build-push.md` (PR #15) |
+| iOS PWA v1 (install shell + Worker hosting + WebKit e2e) | ✅ **done 2026-07-04** — implementation merged (PR #14) and rollout runbook `2026-07-03-ios-pwa-rollout.md` verified by the owner (deploy + iPhone checklist passed) |
 | Graphics polish | ❌ (Phase D, deferred/low priority) |
 
 **Gating rule (now satisfied):** Phase C was gated on Phase A passing; Phase A passed
