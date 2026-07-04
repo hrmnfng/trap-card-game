@@ -30,3 +30,18 @@ database_id = "11e42ffc-46f4-4c0d-84a4-67acfca29e32"
 [[kv_namespaces]]
 binding = "TOKENS"
 id = "7477828cbae44f9f8bd7e6863e588567"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

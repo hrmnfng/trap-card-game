@@ -135,8 +135,11 @@ service-account key** (to Expo, so its push service can authenticate to FCM).
 ## Part 5 — Build the preview APK and sideload it  [you]
 
 ```bash
-npx eas-cli build --profile preview --platform android
+npx eas-cli build --profile preview --platform android -m "<what changed>"
 ```
+
+(`-m` is optional but recommended — the message labels the build on expo.dev and in
+`npx eas-cli build:list`, which helps when iterating with uncommitted changes.)
 
 Expected: a cloud build runs (free tier covers a handful/month); EAS prompts to
 **generate an Android Keystore** on the first build — accept (EAS manages it). On
