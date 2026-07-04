@@ -148,6 +148,10 @@ npx expo install expo-dev-client
 npx eas build --profile development --platform ios   # and/or android
 ```
 
+Tag any EAS build with a short note via `-m "<message>"` — it shows on the build's
+page on expo.dev and in `npx eas-cli build:list`, which makes builds easy to tell
+apart (especially when building from uncommitted changes).
+
 After login on the device, confirm `POST /api/devices` registers a token
 (`npx wrangler tail`) and that a targeted card-play delivers a push.
 

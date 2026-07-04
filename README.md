@@ -154,7 +154,8 @@ npx wrangler deploy                        # deploy the Worker
 ```
 
 Point the production app config at the deployed URL via `EXPO_PUBLIC_*`, and build
-the mobile app with EAS (`eas build`). Full steps in `QUICKSTART.md`.
+the mobile app with EAS (`eas build`; add `-m "<message>"` to label the build on
+expo.dev). Full steps in `QUICKSTART.md`.
 
 ## Project structure
 
