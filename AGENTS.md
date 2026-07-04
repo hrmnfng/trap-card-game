@@ -269,6 +269,15 @@ renders as `data-testid`, so `getByTestId` works against the same native compone
   `apps/mobile/dist/.gitkeep` keeps the directory present so `wrangler dev`
   works before an export exists.
 
+### `expo start` in CI needs `--offline`
+
+- Since `eas init` wrote `owner` + `extra.eas.projectId` into `apps/mobile/app.json`,
+  a plain `npx expo start` tries to authenticate against the EAS account to sign the
+  dev-server manifest. Locally that's invisible (you're logged in); in non-interactive
+  CI it dies with `CommandError: Input is required` and Expo Go shows "Something went
+  wrong". Any workflow that starts Metro must pass `--offline` (anonymous manifest
+  signatures, no network auth) — see the Device workflow's "Start Metro" step.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
