@@ -171,14 +171,14 @@ If the banner shows on the backgrounded phone, push works end-to-end on a real b
 
 ## Verification checklist
 
-- [ ] `eas init` wrote `extra.eas.projectId` + `owner` into `app.json` (committed)
-- [ ] `eas.json` `preview` profile added; `push.ts` passes `projectId`
-- [ ] `EXPO_PUBLIC_*` set as EAS env vars on the `preview` environment (not committed)
-- [ ] Firebase project + Android app (`com.trapcard.app`); `google-services.json` in place
-- [ ] FCM v1 service-account key uploaded via `eas credentials` (NOT committed)
-- [ ] preview APK built and **sideloaded** onto a physical Android phone
-- [ ] `wrangler tail` shows `POST /api/devices` on login
-- [ ] a trap played from another client delivers a push to the backgrounded phone
+- [x] `eas init` wrote `extra.eas.projectId` + `owner` into `app.json` (committed)
+- [x] `eas.json` `preview` profile added; `push.ts` passes `projectId`
+- [x] `EXPO_PUBLIC_*` set as EAS env vars on the `preview` environment (not committed)
+- [x] Firebase project + Android app (`com.trapcard.app`); `google-services.json` in place
+- [x] FCM v1 service-account key uploaded via `eas credentials` (NOT committed)
+- [x] preview APK built and **sideloaded** onto a physical Android phone
+- [x] `wrangler tail` shows `POST /api/devices` on login
+- [x] a trap played from another client delivers a push to the backgrounded phone
 
 ---
 
