@@ -76,6 +76,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Build shared package
+        run: npm run build --workspace=@trap/shared
       - name: Guard repo variables are configured
         run: |
           test -n "$EXPO_PUBLIC_API_BASE_URL" || { echo "::error::repo variable EXPO_PUBLIC_API_BASE_URL is unset"; exit 1; }
@@ -148,9 +150,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
           APK_URL: ${{ needs.build-android.outputs.build_url }}
+          PWA_URL: ${{ vars.EXPO_PUBLIC_API_BASE_URL }}
         run: |
           {
-            echo "**PWA:** ${{ vars.EXPO_PUBLIC_API_BASE_URL }}"
+            echo "**PWA:** $PWA_URL"
             if [ -n "$APK_URL" ]; then
               echo "**Android APK (sideload):** $APK_URL"
             else
