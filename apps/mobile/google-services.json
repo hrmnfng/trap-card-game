@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "360116436297",
+    "project_id": "trap-card-game",
+    "storage_bucket": "trap-card-game.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360116436297:android:77cd77be8325a1e761ee98",
+        "android_client_info": {
+          "package_name": "com.trapcard.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOE5IWhOFYCgduSfehuHkbbhvLdtoLoss"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

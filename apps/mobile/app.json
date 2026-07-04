@@ -13,12 +13,25 @@
       "bundleIdentifier": "com.trapcard.app"
     },
     "android": {
-      "package": "com.trapcard.app"
+      "package": "com.trapcard.app",
+      "googleServicesFile": "./google-services.json"
+
     },
     "web": {
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-notifications"]
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1bd3cf8b-7413-4f27-9322-7b8637b6c2d3"
+      }
+    },
+    "owner": "hrmnfng"
   }
 }

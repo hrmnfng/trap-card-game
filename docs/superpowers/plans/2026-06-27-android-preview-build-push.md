@@ -135,8 +135,11 @@ service-account key** (to Expo, so its push service can authenticate to FCM).
 ## Part 5 — Build the preview APK and sideload it  [you]
 
 ```bash
-npx eas-cli build --profile preview --platform android
+npx eas-cli build --profile preview --platform android -m "<what changed>"
 ```
+
+(`-m` is optional but recommended — the message labels the build on expo.dev and in
+`npx eas-cli build:list`, which helps when iterating with uncommitted changes.)
 
 Expected: a cloud build runs (free tier covers a handful/month); EAS prompts to
 **generate an Android Keystore** on the first build — accept (EAS manages it). On
@@ -168,14 +171,14 @@ If the banner shows on the backgrounded phone, push works end-to-end on a real b
 
 ## Verification checklist
 
-- [ ] `eas init` wrote `extra.eas.projectId` + `owner` into `app.json` (committed)
-- [ ] `eas.json` `preview` profile added; `push.ts` passes `projectId`
-- [ ] `EXPO_PUBLIC_*` set as EAS env vars on the `preview` environment (not committed)
-- [ ] Firebase project + Android app (`com.trapcard.app`); `google-services.json` in place
-- [ ] FCM v1 service-account key uploaded via `eas credentials` (NOT committed)
-- [ ] preview APK built and **sideloaded** onto a physical Android phone
-- [ ] `wrangler tail` shows `POST /api/devices` on login
-- [ ] a trap played from another client delivers a push to the backgrounded phone
+- [x] `eas init` wrote `extra.eas.projectId` + `owner` into `app.json` (committed)
+- [x] `eas.json` `preview` profile added; `push.ts` passes `projectId`
+- [x] `EXPO_PUBLIC_*` set as EAS env vars on the `preview` environment (not committed)
+- [x] Firebase project + Android app (`com.trapcard.app`); `google-services.json` in place
+- [x] FCM v1 service-account key uploaded via `eas credentials` (NOT committed)
+- [x] preview APK built and **sideloaded** onto a physical Android phone
+- [x] `wrangler tail` shows `POST /api/devices` on login
+- [x] a trap played from another client delivers a push to the backgrounded phone
 
 ---
 

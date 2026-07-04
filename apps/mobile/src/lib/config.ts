@@ -1,15 +1,16 @@
 /**
  * Runtime configuration for the mobile client.
  *
- * Expo inlines `EXPO_PUBLIC_*` variables at build time, exposing them on
- * `process.env`. The same lookup works under Node during unit tests, so this
- * module has no Expo dependency. Defaults target a local `wrangler dev`.
+ * Expo inlines `EXPO_PUBLIC_*` variables at build time, but ONLY when read as
+ * static member expressions (`process.env.EXPO_PUBLIC_X`). Dynamic access
+ * (`process.env[key]`) is not inlined and silently yields `undefined` in
+ * release builds, so the reads below must stay static. The same lookup works
+ * under Node during unit tests, so this module has no Expo dependency.
+ * Defaults target a local `wrangler dev`.
  */
 
-function envVar(key: string): string | undefined {
-  if (typeof process === 'undefined' || !process.env) return undefined;
-  const value = process.env[key];
-  return value && value.length > 0 ? value : undefined;
+function orDefault(value: string | undefined, fallback: string): string {
+  return value && value.length > 0 ? value : fallback;
 }
 
 /** Default `wrangler dev` address for the Worker. */
@@ -25,6 +26,6 @@ export interface AppConfig {
 }
 
 export const config: AppConfig = {
-  apiBaseUrl: envVar('EXPO_PUBLIC_API_BASE_URL') ?? DEFAULT_API_BASE_URL,
-  partyHost: envVar('EXPO_PUBLIC_PARTY_HOST') ?? DEFAULT_PARTY_HOST,
+  apiBaseUrl: orDefault(process.env.EXPO_PUBLIC_API_BASE_URL, DEFAULT_API_BASE_URL),
+  partyHost: orDefault(process.env.EXPO_PUBLIC_PARTY_HOST, DEFAULT_PARTY_HOST),
 };

@@ -31,6 +31,21 @@ database_id = "11e42ffc-46f4-4c0d-84a4-67acfca29e32"
 binding = "TOKENS"
 id = "7477828cbae44f9f8bd7e6863e588567"
 
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
+
 # Serve the exported Expo web build (iOS PWA) from this Worker — same origin as
 # the API and WebSocket, one deploy. `run_worker_first` is load-bearing: without
 # it the SPA fallback would answer /api/* calls and the /parties/* WebSocket
