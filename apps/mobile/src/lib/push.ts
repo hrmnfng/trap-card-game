@@ -14,6 +14,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import type { DevicePlatform } from '@trap/shared';
 import type { ApiClient } from './apiClient';
+import Constants from 'expo-constants'
 
 export async function registerForPushNotifications(
   api: ApiClient
@@ -27,7 +28,10 @@ export async function registerForPushNotifications(
   }
   if (!granted) return null;
 
-  const { data: expoToken } = await Notifications.getExpoPushTokenAsync();
+  const projectId =
+    Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+  if (!projectId) return null; // not an EAS build
+  const { data: expoToken } = await Notifications.getExpoPushTokenAsync({ projectId });
   const platform: DevicePlatform = Platform.OS === 'ios' ? 'ios' : 'android';
   await api.registerDevice(expoToken, platform);
   return expoToken;

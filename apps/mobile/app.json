@@ -12,7 +12,9 @@
       "bundleIdentifier": "com.trapcard.app"
     },
     "android": {
-      "package": "com.trapcard.app"
+      "package": "com.trapcard.app",
+      "googleServicesFile": "./google-services.json"
+
     },
     "web": {
       "bundler": "metro",
