@@ -1,3 +1,9 @@
+> **Runsheet** (moved 2026-07-04 from `docs/superpowers/plans/2026-07-03-ios-pwa-rollout.md`).
+> Day-to-day releases are automated by `.github/workflows/release.yml`
+> (production = root `package.json` version bump; preview = manual dispatch,
+> Android-only). Use this document for first-time setup or when deploying
+> manually.
+
 # iOS PWA Rollout Runbook
 
 > **For the human running this:** user-executed runbook (Phase-B style), not an
@@ -23,7 +29,7 @@ From `apps/mobile`, run the exported-build suite against a local Worker:
     npm run e2e:clean
     $env:EXPO_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8787'
     $env:EXPO_PUBLIC_PARTY_HOST = '127.0.0.1:8787'
-    npx expo export --platform web
+    npx expo export --platform web --clear
     npx playwright test --config playwright.exported.config.ts
 
 Expected: 5 passed.
@@ -38,12 +44,20 @@ From `apps/mobile` (PowerShell):
 
     $env:EXPO_PUBLIC_API_BASE_URL = 'https://trapcard-party.<subdomain>.workers.dev'
     $env:EXPO_PUBLIC_PARTY_HOST = 'trapcard-party.<subdomain>.workers.dev'
-    npx expo export --platform web
+    npx expo export --platform web --clear
 
 Expected: exits 0, writes `apps/mobile/dist/`.
 
 > Don't mix steps 1 and 2: whichever export ran **last** is what deploys. Always
-> re-export with the production values immediately before deploying.
+> re-export with the production values immediately before deploying, and **never
+> drop `--clear`**: `EXPO_PUBLIC_*` values are baked at Metro *transform* time and
+> cached, so an export without `--clear` can silently keep the previous export's
+> URLs (e.g. deploy a bundle that calls `127.0.0.1:8787`). Belt-and-braces check
+> before deploying:
+>
+>     Select-String -Path dist/_expo/static/js/web/entry-*.js -Pattern '127.0.0.1:8787' -Quiet
+>
+> must print nothing/`False` for a production export.
 
 ## 3. Deploy
 

@@ -278,6 +278,17 @@ renders as `data-testid`, so `getByTestId` works against the same native compone
   wrong". Any workflow that starts Metro must pass `--offline` (anonymous manifest
   signatures, no network auth) — see the Device workflow's "Start Metro" step.
 
+### Releases: preview is Android-only
+
+- `.github/workflows/release.yml` releases both targets. **Production** runs on
+  a `main` push that bumps the root `package.json` version (the single source
+  of truth) — it deploys the PWA, builds the Android APK (EAS `production`
+  profile), and only then tags `vX.Y.Z` + creates the GitHub Release.
+  **Preview** (manual dispatch) is **Android-only**: the PWA has no preview
+  environment — its pre-prod gate is the exported-build Playwright suite
+  (`playwright.exported.config.ts`). Manual/first-time paths live in
+  `docs/runsheets/`.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

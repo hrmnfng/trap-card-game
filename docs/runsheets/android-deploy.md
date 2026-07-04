@@ -1,3 +1,9 @@
+> **Runsheet** (moved 2026-07-04 from `docs/superpowers/plans/2026-06-27-android-preview-build-push.md`).
+> Day-to-day releases are automated by `.github/workflows/release.yml`
+> (production = root `package.json` version bump; preview = manual dispatch,
+> Android-only). Use this document for first-time setup or when deploying
+> manually.
+
 # Android Preview Build (sideload) + On-Device Push Runbook
 
 > **For the human running this:** A user-executed runbook (like the Phase B deploy
