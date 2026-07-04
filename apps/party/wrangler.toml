@@ -45,3 +45,13 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
+
+# Serve the exported Expo web build (iOS PWA) from this Worker — same origin as
+# the API and WebSocket, one deploy. `run_worker_first` is load-bearing: without
+# it the SPA fallback would answer /api/* calls and the /parties/* WebSocket
+# upgrade with index.html. `single-page-application` serves index.html for deep
+# links (/lobby/ABCD), which the client router hydrates from the URL.
+[assets]
+directory = "../mobile/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/parties/*"]

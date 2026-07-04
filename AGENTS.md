@@ -260,6 +260,24 @@ Expo-Router-on-web behaviours bite naive selectors (both handled in `e2e/helpers
 Components get `testID`s (e.g. `create-lobby`, `hand-card`), which react-native-web
 renders as `data-testid`, so `getByTestId` works against the same native components.
 
+### Worker static assets: `run_worker_first` is load-bearing
+
+- **`[assets].run_worker_first` in `apps/party/wrangler.toml` is load-bearing.**
+  The Worker serves the exported web build (`apps/mobile/dist`) as static assets
+  with SPA fallback; without `run_worker_first = ["/api/*", "/parties/*"]` the
+  fallback would answer API calls and the WebSocket upgrade with `index.html`.
+  `apps/mobile/dist/.gitkeep` keeps the directory present so `wrangler dev`
+  works before an export exists.
+
+### `expo start` in CI needs `--offline`
+
+- Since `eas init` wrote `owner` + `extra.eas.projectId` into `apps/mobile/app.json`,
+  a plain `npx expo start` tries to authenticate against the EAS account to sign the
+  dev-server manifest. Locally that's invisible (you're logged in); in non-interactive
+  CI it dies with `CommandError: Input is required` and Expo Go shows "Something went
+  wrong". Any workflow that starts Metro must pass `--offline` (anonymous manifest
+  signatures, no network auth) — see the Device workflow's "Start Metro" step.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 

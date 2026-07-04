@@ -41,6 +41,7 @@ Workers/D1/KV, Wrangler, Vitest.
 | Auth session persistence (survives app/page restart) | ✅ fixed 2026-07-02 — lazy storage binding + web `localStorage` backend; reload e2e |
 | Legacy `frontend/` + `backend/` removed | ✅ done (Phase 6 cutover landed) |
 | Android sideload (preview APK) + push | ⏳ in progress — runbook `2026-06-27-android-preview-build-push.md` (EAS preview APK + Firebase/FCM; no store/fees; iOS deferred) |
+| iOS PWA v1 (install shell + Worker hosting + WebKit e2e) | ✅ implementation landed 2026-07-03 on `feat/ios-pwa` (manifest/icons/`+html.tsx`, static export, Worker `[assets]` hosting, WebKit + exported-build suites green); **remaining:** owner runs `2026-07-03-ios-pwa-rollout.md` (deploy + iPhone checklist) |
 | Graphics polish | ❌ (Phase D, deferred/low priority) |
 
 **Gating rule (now satisfied):** Phase C was gated on Phase A passing; Phase A passed

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   SectionList,
   StyleSheet,
@@ -64,27 +65,55 @@ export default function HomeScreen() {
     });
   };
 
+  // Fetch (or re-fetch) the lobby history.
+  //
+  // Two complementary triggers cover every return-to-Home path:
+  //   useFocusEffect — fires on initial mount and whenever the screen regains
+  //     focus via in-app navigation (e.g. router.replace('/') from Leave).
+  //     The callback is recreated when isAuthenticated changes, so a fresh
+  //     login also triggers a refetch.
+  //   popstate listener — fires when the browser pops a history entry (back /
+  //     forward button). Covers WebKit, which does not reliably emit React
+  //     Navigation focus events after browser back-navigation.
+  // A duplicate fetch when both fire on the same navigation is a cheap
+  // idempotent GET.
+  const doFetchHistory = useCallback(() => {
+    if (!isAuthenticated) return;
+    setLoadingHistory(true);
+    api
+      .listLobbyHistory()
+      .then((items) => setHistory(items))
+      .catch(() => setHistory([]))
+      .finally(() => setLoadingHistory(false));
+  }, [isAuthenticated]);
+
+  // Refresh on focus (fires on initial mount and on in-app navigation, e.g.
+  // router.replace('/') from Leave). WebKit does not reliably emit focus events
+  // after *browser* back-navigation, so a popstate listener below covers that
+  // path; between the two, every return to Home refetches. A duplicate fetch
+  // when both fire is a cheap idempotent GET.
   useFocusEffect(
     useCallback(() => {
-      if (!isAuthenticated) return;
-      let active = true;
-      setLoadingHistory(true);
-      api
-        .listLobbyHistory()
-        .then((items) => {
-          if (active) setHistory(items);
-        })
-        .catch(() => {
-          if (active) setHistory([]);
-        })
-        .finally(() => {
-          if (active) setLoadingHistory(false);
-        });
-      return () => {
-        active = false;
-      };
-    }, [isAuthenticated])
+      doFetchHistory();
+    }, [doFetchHistory])
   );
+
+  // Re-load on browser back-navigation. The popstate event fires in all engines
+  // (including WebKit) when history.go(-1) pops a history entry; we fire
+  // unconditionally — a refetch while the screen is hidden is harmless.
+  // Web only: on native Hermes `window` exists (it aliases the global) but has
+  // no DOM event API, so calling window.addEventListener would crash Home on
+  // mount (caught by the Maestro smoke gate).
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onPopState = () => {
+      doFetchHistory();
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [doFetchHistory]);
 
   const openLobby = (item: LobbyHistoryItem) => {
     if (item.status === 'concluded') return;

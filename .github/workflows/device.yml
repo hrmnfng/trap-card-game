@@ -50,10 +50,13 @@ jobs:
 
       # The smoke flow only needs Metro to serve the JS bundle; it boots the app
       # and asserts the home screen renders (no Worker / second player needed).
+      # --offline is required: app.json carries an EAS projectId/owner, so a
+      # plain `expo start` tries to authenticate to sign the manifest and dies
+      # in non-interactive CI ("Input is required").
       - name: Start Metro (Expo dev server)
         working-directory: apps/mobile
         run: |
-          nohup npx expo start > /tmp/metro.log 2>&1 &
+          nohup npx expo start --offline > /tmp/metro.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://127.0.0.1:8081 && break || sleep 2
           done

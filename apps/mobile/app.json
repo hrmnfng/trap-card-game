@@ -6,6 +6,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./public/icons/icon-1024.png",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -18,7 +19,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
