@@ -1,3 +1,9 @@
+> **Runsheet** (moved 2026-07-04 from `docs/superpowers/plans/2026-07-03-ios-pwa-rollout.md`).
+> Day-to-day releases are automated by `.github/workflows/release.yml`
+> (production = root `package.json` version bump; preview = manual dispatch,
+> Android-only). Use this document for first-time setup or when deploying
+> manually.
+
 # iOS PWA Rollout Runbook
 
 > **For the human running this:** user-executed runbook (Phase-B style), not an

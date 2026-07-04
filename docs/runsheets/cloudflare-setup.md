@@ -1,3 +1,9 @@
+> **Runsheet** (moved 2026-07-04 from `docs/superpowers/plans/2026-06-27-phase-b-deploy.md`).
+> Day-to-day releases are automated by `.github/workflows/release.yml`
+> (production = root `package.json` version bump; preview = manual dispatch,
+> Android-only). Use this document for first-time setup or when deploying
+> manually.
+
 # Phase B — Deploy the Worker (Cloudflare) Runbook
 
 > **For the human running this:** This is a user-executed runbook, not an agentic
