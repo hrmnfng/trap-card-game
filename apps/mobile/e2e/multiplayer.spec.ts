@@ -81,8 +81,8 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     await vis(host.getByTestId('opponent')).first().click();
 
     await expect(vis(host.getByTestId('hand-card'))).toHaveCount(2);
-    await expect(vis(host.getByText(new RegExp(`${hostUser} played`)))).toBeVisible();
-    await expect(vis(guest.getByText(new RegExp(`${hostUser} played`)))).toBeVisible();
+    await expect(vis(host.getByTestId('history-item')).first()).toContainText(hostUser);
+    await expect(vis(guest.getByTestId('history-item')).first()).toContainText(hostUser);
 
     // Membership is permanent across an exit + re-entry (I1/I3). The guest
     // leaves the game (closing its socket) and returns from the Home "your

@@ -14,6 +14,7 @@ import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
+import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
 import { Celebration } from '../../src/ui/Celebration';
 import { Screen } from '../../src/ui/Screen';
 
@@ -131,19 +132,7 @@ export default function GameScreen() {
         </View>
 
         <Text style={styles.section}>History</Text>
-        {gameState.gameHistory.length === 0 ? (
-          <Text style={styles.subtle}>No plays yet.</Text>
-        ) : (
-          gameState.gameHistory
-            .slice()
-            .reverse()
-            .map((h) => (
-              <Text key={h.id} style={styles.historyItem}>
-                {h.playerUsername} played "{h.statement ?? '?'}" on{' '}
-                {h.targetUsername ?? 'unknown'}
-              </Text>
-            ))
-        )}
+        <HistoryTimeline items={gameState.gameHistory} myPlayerId={userId} />
       </ScrollView>
 
       {concluded ? (
@@ -207,7 +196,6 @@ const styles = StyleSheet.create({
   opponentActionIdle: { color: colors.muted, fontSize: 13, fontWeight: '400' },
   opponentName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   hand: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  historyItem: { color: colors.muted, fontSize: 14, marginTop: 4 },
   subtle: { color: colors.muted, fontSize: 14 },
   endedBanner: {
     backgroundColor: colors.surface,
