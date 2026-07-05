@@ -40,7 +40,7 @@ jobs:
       version: ${{ steps.gate.outputs.version }}
       release: ${{ steps.gate.outputs.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # need all tags for the comparison
       - name: Read and validate the version
@@ -78,8 +78,8 @@ jobs:
       EXPO_PUBLIC_API_BASE_URL: ${{ vars.EXPO_PUBLIC_API_BASE_URL }}
       EXPO_PUBLIC_PARTY_HOST: ${{ vars.EXPO_PUBLIC_PARTY_HOST }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -125,12 +125,22 @@ jobs:
     outputs:
       build_url: ${{ steps.eas.outputs.build_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
+      # google-services.json is git-ignored; CI recreates it from the secret.
+      # .easignore (repo root) keeps it in the EAS upload despite .gitignore.
+      - name: Materialize google-services.json from the secret
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          test -n "$GOOGLE_SERVICES_JSON" || { echo "::error::secret GOOGLE_SERVICES_JSON is unset"; exit 1; }
+          printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          jq -e .project_info google-services.json >/dev/null || { echo "::error::GOOGLE_SERVICES_JSON is not valid google-services.json content"; exit 1; }
       # Waits for the cloud build (~10-20 min): the tag must mean "everything
       # actually shipped". EXPO_PUBLIC_* comes from the EAS production
       # environment (eas.json profile), not from this job's env.
@@ -152,7 +162,7 @@ jobs:
     if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create tag and Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -179,12 +189,21 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
+      # Same materialization as the production job — see the comment there.
+      - name: Materialize google-services.json from the secret
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          test -n "$GOOGLE_SERVICES_JSON" || { echo "::error::secret GOOGLE_SERVICES_JSON is unset"; exit 1; }
+          printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          jq -e .project_info google-services.json >/dev/null || { echo "::error::GOOGLE_SERVICES_JSON is not valid google-services.json content"; exit 1; }
       - name: EAS build (preview profile)
         working-directory: apps/mobile
         env:
@@ -204,7 +223,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Compare the version against the base branch
         id: detect
         env:

@@ -9,7 +9,12 @@
  */
 
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { CardPlayedMessage, GameState, ServerMessage } from '@trap/shared';
+import type {
+  CardPlayedMessage,
+  GameHistoryItem,
+  GameState,
+  ServerMessage,
+} from '@trap/shared';
 import {
   LobbyConnection,
   type ConnectionStatus,
@@ -158,6 +163,27 @@ export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreSta
       });
     },
   }));
+}
+
+/**
+ * Plays from the (event-sourced, append-only) game history that target
+ * `playerId`, chronological. The IncomingReveal overlay derives "unseen hits"
+ * as `hitsOnMe(...).slice(seenCount)` — append-only means a persisted count
+ * is a stable cursor.
+ */
+export function hitsOnMe(
+  state: GameState | null,
+  playerId: string | null
+): GameHistoryItem[] {
+  if (!state || !playerId) return [];
+  return state.gameHistory.filter(
+    (h) => h.actionType === 'play_card' && h.targetId === playerId
+  );
+}
+
+/** Storage key for the per-lobby count of acknowledged incoming plays. */
+export function seenHitsKey(lobbyCode: string): string {
+  return `seen_hits_${lobbyCode}`;
 }
 
 /** Process-wide game store used by the app. */

@@ -132,6 +132,17 @@ root `package.json` version on `main` deploys production (Worker + PWA, Android
 EAS build, semver tag); a manual workflow dispatch builds an **Android-only**
 preview.
 
+To cut a release, bump the version on a branch and merge the PR to `main`:
+
+```bash
+# from the repo root — updates package.json + package-lock.json together
+npm version --no-git-tag-version patch  # or minor / major, or an exact "1.2.0"
+```
+
+`--no-git-tag-version` matters: without it npm creates a local commit and a
+`v<version>` tag, and the release workflow treats an already-existing tag as
+"already released" and no-ops. Let the workflow mint the tag on merge.
+
 For first-time setup or a manual deploy, follow the runsheets in
 [`docs/runsheets/`](docs/runsheets/):
 

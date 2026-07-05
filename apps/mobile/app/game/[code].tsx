@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { GestureResponderEvent } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { AnimatePresence, MotiView } from 'moti';
 import type { Card } from '@trap/shared';
@@ -14,6 +15,9 @@ import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
+import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
+import { IncomingReveal } from '../../src/ui/IncomingReveal';
+import { DURATION, useReducedMotion } from '../../src/ui/motion';
 import { Celebration } from '../../src/ui/Celebration';
 import { Screen } from '../../src/ui/Screen';
 
@@ -26,6 +30,17 @@ export default function GameScreen() {
   const lobbyCode = useGame((s) => s.lobbyCode);
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
+  // Travel-animation state: where the hand card was tapped (page coords) and
+  // the in-flight proxy's overlay-local start/end points.
+  const selectPoint = useRef<{ x: number; y: number } | null>(null);
+  const overlayRef = useRef<View>(null);
+  const [flight, setFlight] = useState<{
+    id: string;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  } | null>(null);
+  const reduce = useReducedMotion();
 
   // Reconnect if this screen is opened directly (deep link / reload).
   useEffect(() => {
@@ -63,8 +78,21 @@ export default function GameScreen() {
   const winnerUsername = gameState.winnerUsername;
   const iWon = concluded && winnerId === userId;
 
-  const playOn = (targetPlayerId: string) => {
+  const playOn = (targetPlayerId: string, e?: GestureResponderEvent) => {
     if (concluded || !selectedCardId) return;
+    const start = selectPoint.current;
+    const end = e ? { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY } : null;
+    if (start && end && !reduce) {
+      // Convert page coords to overlay-local coords, then fly.
+      overlayRef.current?.measureInWindow((ox, oy) => {
+        setFlight({
+          id: `${selectedCardId}-${Date.now()}`,
+          from: { x: start.x - ox, y: start.y - oy },
+          to: { x: end.x - ox, y: end.y - oy },
+        });
+      });
+    }
+    selectPoint.current = null;
     gameStore.getState().playCard(selectedCardId, targetPlayerId);
     setSelectedCardId(null);
   };
@@ -96,7 +124,7 @@ export default function GameScreen() {
                 styles.opponent,
                 selectedCardId && !concluded ? styles.opponentArmed : styles.opponentIdle,
               ]}
-              onPress={() => playOn(p.id)}
+              onPress={(e) => playOn(p.id, e)}
               disabled={!selectedCardId || concluded}
             >
               <View style={styles.opponentInfo}>
@@ -121,7 +149,10 @@ export default function GameScreen() {
                 statement={card.statement}
                 index={i}
                 selected={card.id === selectedCardId}
-                onPress={() => setSelectedCardId(card.id === selectedCardId ? null : card.id)}
+                onPress={(e) => {
+                  selectPoint.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+                  setSelectedCardId(card.id === selectedCardId ? null : card.id);
+                }}
               />
             ))}
           </AnimatePresence>
@@ -131,20 +162,10 @@ export default function GameScreen() {
         </View>
 
         <Text style={styles.section}>History</Text>
-        {gameState.gameHistory.length === 0 ? (
-          <Text style={styles.subtle}>No plays yet.</Text>
-        ) : (
-          gameState.gameHistory
-            .slice()
-            .reverse()
-            .map((h) => (
-              <Text key={h.id} style={styles.historyItem}>
-                {h.playerUsername} played "{h.statement ?? '?'}" on{' '}
-                {h.targetUsername ?? 'unknown'}
-              </Text>
-            ))
-        )}
+        <HistoryTimeline items={gameState.gameHistory} myPlayerId={userId} />
       </ScrollView>
+
+      <IncomingReveal lobbyCode={code} playerId={userId} gameState={gameState} />
 
       {concluded ? (
         <>
@@ -170,6 +191,38 @@ export default function GameScreen() {
           <Text style={styles.linkText}>Return to lobby</Text>
         </Pressable>
       )}
+
+      <View
+        ref={overlayRef}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+        collapsable={false}
+      >
+        {flight ? (
+          <MotiView
+            key={flight.id}
+            style={styles.flightCard}
+            from={{
+              translateX: flight.from.x - 17,
+              translateY: flight.from.y - 24,
+              scale: 1,
+              opacity: 1,
+              rotate: '0deg',
+            }}
+            animate={{
+              translateX: flight.to.x - 17,
+              translateY: flight.to.y - 24,
+              scale: 0.55,
+              opacity: 0,
+              rotate: '10deg',
+            }}
+            transition={{ type: 'timing', duration: DURATION.base * 1.5 }}
+            onDidAnimate={(key) => {
+              if (key === 'opacity') setFlight(null);
+            }}
+          />
+        ) : null}
+      </View>
     </Screen>
   );
 }
@@ -207,7 +260,6 @@ const styles = StyleSheet.create({
   opponentActionIdle: { color: colors.muted, fontSize: 13, fontWeight: '400' },
   opponentName: { color: colors.text, fontSize: 16, fontWeight: '600' },
   hand: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  historyItem: { color: colors.muted, fontSize: 14, marginTop: 4 },
   subtle: { color: colors.muted, fontSize: 14 },
   endedBanner: {
     backgroundColor: colors.surface,
@@ -226,4 +278,13 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
   linkButton: { alignItems: 'center', paddingVertical: 14 },
   linkText: { color: colors.muted, fontSize: 14 },
+  flightCard: {
+    position: 'absolute',
+    width: 34,
+    height: 48,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
 });

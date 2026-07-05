@@ -1,7 +1,7 @@
 /**
  * Regenerates the PWA/app icon set in apps/mobile/public/icons/ from a
- * programmatic SVG master (tilted card + exclamation glyph on the dark theme
- * color). Run from apps/mobile:
+ * programmatic SVG master (bold "T!" lettermark on the dark theme color).
+ * Run from apps/mobile:
  *
  *   node scripts/generate-icons.mjs
  *
@@ -20,22 +20,26 @@ const outDir = path.join(appRoot, 'public', 'icons');
 // Mirrors src/lib/theme.ts (colors.bg / surface / primary). Kept literal so the
 // script runs without the TS toolchain; pwa.test.ts guards the manifest side.
 const BG = '#1a202c';
-const SURFACE = '#2d3748';
 const PRIMARY = '#4299e1';
 
+// Type color for the "T" (theme text color, kept literal like the others).
+const TYPE = '#e2e8f0';
+
 /**
- * 1024x1024 master. `scale` shrinks the card toward the center: 1 for regular
- * icons, 0.72 for the maskable variant so the card stays inside the ~80%
- * circular safe zone. The background always bleeds to the edges.
+ * 1024x1024 master: bold "T!" lettermark (spec decision 5) — the T in the
+ * theme text color, the exclamation in primary blue, drawn with rects/circles
+ * (never <text>) so output does not depend on installed fonts. `scale`
+ * shrinks the mark toward the center: 1 for regular icons, 0.72 for the
+ * maskable variant's ~80% circular safe zone.
  */
 function masterSvg(scale) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
   <rect width="1024" height="1024" fill="${BG}"/>
-  <g transform="translate(512 512) scale(${scale}) rotate(-8) translate(-512 -512)">
-    <rect x="292" y="202" width="440" height="620" rx="48"
-          fill="${SURFACE}" stroke="${PRIMARY}" stroke-width="24"/>
-    <rect x="467" y="330" width="90" height="280" rx="45" fill="${PRIMARY}"/>
-    <circle cx="512" cy="700" r="55" fill="${PRIMARY}"/>
+  <g transform="translate(512 512) scale(${scale}) translate(-512 -512)">
+    <rect x="238" y="290" width="380" height="100" rx="24" fill="${TYPE}"/>
+    <rect x="378" y="290" width="100" height="444" rx="24" fill="${TYPE}"/>
+    <rect x="678" y="290" width="104" height="330" rx="52" fill="${PRIMARY}"/>
+    <circle cx="730" cy="686" r="62" fill="${PRIMARY}"/>
   </g>
 </svg>`;
 }

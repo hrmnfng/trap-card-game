@@ -81,8 +81,17 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     await vis(host.getByTestId('opponent')).first().click();
 
     await expect(vis(host.getByTestId('hand-card'))).toHaveCount(2);
-    await expect(vis(host.getByText(new RegExp(`${hostUser} played`)))).toBeVisible();
-    await expect(vis(guest.getByText(new RegExp(`${hostUser} played`)))).toBeVisible();
+    await expect(vis(host.getByTestId('history-item')).first()).toContainText(hostUser);
+
+    // The guest was hit: the center-stage reveal shows the attacker + sentence.
+    const guestReveal = vis(guest.getByTestId('incoming-reveal'));
+    await expect(guestReveal).toBeVisible();
+    await expect(guestReveal).toContainText(hostUser);
+    await expect(guestReveal).toContainText(/trap \d/);
+    await vis(guest.getByTestId('incoming-dismiss')).click();
+    await expect(guest.getByTestId('incoming-reveal')).toHaveCount(0);
+
+    await expect(vis(guest.getByTestId('history-item')).first()).toContainText(hostUser);
 
     // Membership is permanent across an exit + re-entry (I1/I3). The guest
     // leaves the game (closing its socket) and returns from the Home "your
@@ -93,6 +102,8 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
     await vis(guest.getByText(code)).click();
     await guest.waitForURL(new RegExp(`/game/${code}`));
     await expect(vis(guest.getByTestId('hand-card'))).toHaveCount(3);
+    // The dismissed hit stays dismissed across exit + re-entry (persisted seen count).
+    await expect(guest.getByTestId('incoming-reveal')).toHaveCount(0);
     // Scope to the opponent row — the username also appears in the play history.
     await expect(vis(guest.getByTestId('opponent').getByText(hostUser))).toBeVisible();
     await expect(vis(host.getByTestId('opponent').getByText(guestUser))).toBeVisible();
@@ -105,6 +116,13 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
       await vis(host.getByTestId('opponent')).first().click();
       await expect(vis(host.getByTestId('hand-card'))).toHaveCount(remaining);
     }
+
+    // Two hits landed without a dismissal in between: one coalesced overlay.
+    const cascade = vis(guest.getByTestId('incoming-reveal'));
+    await expect(cascade).toContainText('2 cards were played on you');
+    await expect(vis(guest.getByTestId('incoming-reveal')).getByText(/trap \d/)).toHaveCount(2);
+    await vis(guest.getByTestId('incoming-dismiss')).click();
+
     await expect(vis(host.getByText(/sprung all your traps first/i))).toBeVisible();
     await expect(
       vis(guest.getByText(new RegExp(`${hostUser} sprung all their traps first`)))

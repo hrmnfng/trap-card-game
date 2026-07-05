@@ -19,12 +19,22 @@ import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { colors } from '../src/lib/theme';
 import { getStorage } from '../src/lib/storage';
-import { groupLobbiesByState } from '../src/lib/lobbies';
+import {
+  groupLobbiesByState,
+  sortLobbies,
+  LOBBY_SORT_CYCLE,
+  LOBBY_SORT_LABELS,
+  type LobbySortMode,
+} from '../src/lib/lobbies';
 import { PressableScale } from '../src/ui/PressableScale';
 import { Screen } from '../src/ui/Screen';
+import { Wordmark } from '../src/ui/Wordmark';
 
 /** Persisted preference key for whether completed lobbies are revealed. */
 const SHOW_COMPLETED_KEY = 'pref_show_completed';
+
+/** Persisted preference key for the lobby-list sort mode. */
+const LOBBY_SORT_KEY = 'pref_lobby_sort';
 
 export default function HomeScreen() {
   const isAuthenticated = useAuth(selectIsAuthenticated);
@@ -34,6 +44,7 @@ export default function HomeScreen() {
   const [history, setHistory] = useState<LobbyHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [sortMode, setSortMode] = useState<LobbySortMode>('recent');
 
   // Load the persisted "show completed" preference once. Storage may be
   // unavailable on some platforms (e.g. secure-store on the web build), so a
@@ -48,6 +59,16 @@ export default function HomeScreen() {
       .catch(() => {
         /* keep default */
       });
+    void getStorage()
+      .getItem(LOBBY_SORT_KEY)
+      .then((v) => {
+        if (active && (LOBBY_SORT_CYCLE as readonly string[]).includes(v ?? '')) {
+          setSortMode(v as LobbySortMode);
+        }
+      })
+      .catch(() => {
+        /* keep default */
+      });
     return () => {
       active = false;
     };
@@ -58,6 +79,19 @@ export default function HomeScreen() {
       const next = !prev;
       void getStorage()
         .setItem(SHOW_COMPLETED_KEY, next ? '1' : '0')
+        .catch(() => {
+          /* best-effort persistence */
+        });
+      return next;
+    });
+  };
+
+  const cycleSort = () => {
+    setSortMode((prev) => {
+      const next =
+        LOBBY_SORT_CYCLE[(LOBBY_SORT_CYCLE.indexOf(prev) + 1) % LOBBY_SORT_CYCLE.length]!;
+      void getStorage()
+        .setItem(LOBBY_SORT_KEY, next)
         .catch(() => {
           /* best-effort persistence */
         });
@@ -123,7 +157,7 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return (
       <Screen style={styles.container}>
-        <Text style={styles.heading}>Trap Card Game</Text>
+        <Wordmark />
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
         <Pressable
           testID="signin-cta"
@@ -164,7 +198,9 @@ export default function HomeScreen() {
     router.push(`/lobby/${code}`);
   };
 
-  const { active: activeLobbies, completed: completedLobbies } = groupLobbiesByState(history);
+  const { active: activeLobbies, completed: completedLobbies } = groupLobbiesByState(
+    sortLobbies(history, sortMode)
+  );
   const sections = [
     ...(activeLobbies.length ? [{ key: 'active', title: 'Active', data: activeLobbies }] : []),
     ...(completedLobbies.length
@@ -191,7 +227,12 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
         </PressableScale>
 
-        <Text style={styles.sectionLabel}>Your lobbies</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>Your lobbies</Text>
+          <Pressable testID="lobby-sort" onPress={cycleSort} hitSlop={8}>
+            <Text style={styles.sortLabel}>{LOBBY_SORT_LABELS[sortMode]} ⇅</Text>
+          </Pressable>
+        </View>
         {loadingHistory ? (
           <ActivityIndicator color={colors.muted} />
         ) : history.length === 0 ? (
@@ -295,6 +336,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionToggle: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  sortLabel: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   list: { flexGrow: 0, maxHeight: 240 },
   lobbyRow: {
     backgroundColor: colors.surface,
