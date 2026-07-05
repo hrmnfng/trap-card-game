@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createGameStore } from './game';
+import { createGameStore, hitsOnMe, seenHitsKey } from './game';
 import { LobbyConnection, type RealtimeSocket } from '../lib/realtime';
-import type { GameState } from '@trap/shared';
+import type { GameHistoryItem, GameState } from '@trap/shared';
 
 function makeFakeSocket() {
   const listeners: Record<string, Array<(ev?: unknown) => void>> = {
@@ -165,5 +165,61 @@ describe('game store', () => {
 
     fake.emitMessage({ type: 'state_update', state: sampleState });
     expect(store.getState().error).toBeNull();
+  });
+});
+
+function historyItem(
+  id: string,
+  targetId: string | null,
+  actionType: GameHistoryItem['actionType'] = 'play_card'
+): GameHistoryItem {
+  return {
+    id,
+    actionType,
+    playerId: 'attacker',
+    playerUsername: 'attacker',
+    targetId,
+    targetUsername: targetId,
+    statement: `trap ${id}`,
+    timestamp: '2026-07-05T00:00:00Z',
+  };
+}
+
+function stateWithHistory(gameHistory: GameHistoryItem[]): GameState {
+  return {
+    lobbyId: 'l1',
+    lobbyCode: 'CODE',
+    status: 'in-progress',
+    ownerId: null,
+    cardsPerPlayer: 3,
+    players: [],
+    myCards: [],
+    gameHistory,
+    winnerId: null,
+    winnerUsername: null,
+  };
+}
+
+describe('hitsOnMe', () => {
+  it('returns only play_card items targeting the player, in order', () => {
+    const state = stateWithHistory([
+      historyItem('1', 'me'),
+      historyItem('2', 'other'),
+      historyItem('3', 'me'),
+      historyItem('4', 'me', 'join'),
+    ]);
+    expect(hitsOnMe(state, 'me').map((h) => h.id)).toEqual(['1', '3']);
+  });
+
+  it('is empty for null state or player', () => {
+    expect(hitsOnMe(null, 'me')).toEqual([]);
+    expect(hitsOnMe(stateWithHistory([historyItem('1', 'me')]), null)).toEqual([]);
+  });
+});
+
+describe('seenHitsKey', () => {
+  it('is namespaced per lobby', () => {
+    expect(seenHitsKey('ABCD')).toBe('seen_hits_ABCD');
+    expect(seenHitsKey('WXYZ')).not.toBe(seenHitsKey('ABCD'));
   });
 });

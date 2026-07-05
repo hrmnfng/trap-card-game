@@ -15,6 +15,7 @@ import { colors } from '../../src/lib/theme';
 import { screenForState } from '../../src/lib/navigation';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
+import { IncomingReveal } from '../../src/ui/IncomingReveal';
 import { Celebration } from '../../src/ui/Celebration';
 import { Screen } from '../../src/ui/Screen';
 
@@ -134,6 +135,8 @@ export default function GameScreen() {
         <Text style={styles.section}>History</Text>
         <HistoryTimeline items={gameState.gameHistory} myPlayerId={userId} />
       </ScrollView>
+
+      <IncomingReveal lobbyCode={code} playerId={userId} gameState={gameState} />
 
       {concluded ? (
         <>
