@@ -5,6 +5,7 @@
  * count assertion still works.
  */
 import { Pressable, StyleSheet, Text } from 'react-native';
+import type { GestureResponderEvent } from 'react-native';
 import { MotiView } from 'moti';
 import { colors } from '../lib/theme';
 import { DEAL_STAGGER, DURATION } from './motion';
@@ -18,7 +19,7 @@ export function PlayingCard({
   statement: string | null;
   selected: boolean;
   index: number;
-  onPress: () => void;
+  onPress: (e: GestureResponderEvent) => void;
 }) {
   return (
     <MotiView
