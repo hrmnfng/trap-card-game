@@ -1,7 +1,7 @@
 {
   "name": "trap-card-game",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Trap Card Game - Expo + Cloudflare PartyServer multiplayer card game",
   "workspaces": [
     "packages/*",
