@@ -24,6 +24,11 @@ Thumbs.db
 # Firebase
 *-firebase-adminsdk-*.json
 firebase-credentials.json
+# Android client config — CI materializes it from the GOOGLE_SERVICES_JSON
+# GitHub secret (release.yml); keep a local copy for manual builds. If you
+# change ignores here, mirror them in .easignore (which must NOT ignore this
+# file, or EAS uploads would drop it).
+apps/mobile/google-services.json
 
 # Node / workspaces
 node_modules/

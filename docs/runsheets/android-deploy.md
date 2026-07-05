@@ -121,11 +121,14 @@ service-account key** (to Expo, so its push service can authenticate to FCM).
    }
    ```
 
-   > **Handling:** it's Android *client* config (package-restricted key — Google says
-   > it's safe to commit). Simplest is to commit it. To keep it out of the repo (our
-   > env policy), gitignore it and add it as an EAS **file** env var
-   > (`eas env:create --environment preview --type file --name GOOGLE_SERVICES_JSON ...`)
-   > then point `googleServicesFile` at `$GOOGLE_SERVICES_JSON`. Either works.
+   > **Handling (decided 2026-07-05):** it's Android *client* config (package-
+   > restricted key — Google says committing is safe), but per our env policy it
+   > is **git-ignored** and injected in CI instead: `release.yml` writes it from
+   > the `GOOGLE_SERVICES_JSON` GitHub secret before each EAS build (set it with
+   > `Get-Content apps/mobile/google-services.json -Raw | gh secret set GOOGLE_SERVICES_JSON`).
+   > Keep a local copy for manual `eas-cli build` runs. The root **`.easignore`**
+   > mirrors `.gitignore` without this file — required, because eas-cli otherwise
+   > honors `.gitignore` and would drop the file from the cloud-build upload.
 
 4. **FCM v1 service-account key (the real secret):** Firebase console → Project
    settings → **Service accounts** → **Generate new private key** → JSON. **Never

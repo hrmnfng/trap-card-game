@@ -1,0 +1,61 @@
+# EAS upload ignore list. When this file exists, eas-cli uses it INSTEAD of
+# .gitignore to decide what is uploaded to the EAS cloud builders. It exists
+# for one reason: apps/mobile/google-services.json is git-ignored (CI writes
+# it from the GOOGLE_SERVICES_JSON secret) but MUST be included in the EAS
+# upload. So this file mirrors .gitignore WITHOUT that entry — keep the two
+# in sync when ignores change.
+
+# Environment files
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Firebase server-side keys (real secrets — never uploaded anywhere)
+*-firebase-adminsdk-*.json
+firebase-credentials.json
+
+# Node / workspaces
+node_modules/
+dist/
+!apps/mobile/dist/
+apps/mobile/dist/*
+!apps/mobile/dist/.gitkeep
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Expo
+.expo/
+web-build/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Superpowers brainstorming companion
+.superpowers/
+
+# Repo tooling not needed by a build (keeps the upload small)
+.gitnexus/
+.claude/
+docs/
+plans/
