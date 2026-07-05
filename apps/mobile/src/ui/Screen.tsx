@@ -4,17 +4,33 @@
  * the navigation header unless each screen pads for it; `useHeaderHeight()` is
  * the real header height (it already includes the status-bar/notch inset, and
  * differs across Android, web, and the installed PWA — which is why hardcoded
- * paddings drifted). Bottom/left/right still come from the safe area. Kept
+ * paddings drifted). On Android the measurement itself misreports under a
+ * transparent header, so it's clamped to the platform default via
+ * `headerClearance`. Bottom/left/right still come from the safe area. Kept
  * transparent so the shared GradientBackground (painted once at the root)
  * shows through. DRY: every route uses this instead of padding by hand.
  */
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useHeaderHeight } from '@react-navigation/elements';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getDefaultHeaderHeight, useHeaderHeight } from '@react-navigation/elements';
+import { headerClearance } from '../lib/layout';
 
 export function Screen({ children, style }: { children: ReactNode; style?: ViewStyle }) {
-  const headerHeight = useHeaderHeight();
+  const measured = useHeaderHeight();
+  const frame = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const headerHeight = headerClearance(
+    measured,
+    getDefaultHeaderHeight(frame, false, insets.top)
+  );
   return (
     <SafeAreaView
       style={[styles.safe, { paddingTop: headerHeight }]}
