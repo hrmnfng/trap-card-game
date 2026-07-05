@@ -69,15 +69,15 @@
       "boundElements": null, "updated": 1, "link": null, "locked": false
     },
     {
-      "id": "txt-actions", "type": "text", "x": 734, "y": 52, "width": 304, "height": 94,
+      "id": "txt-actions", "type": "text", "x": 734, "y": 52, "width": 304, "height": 113,
       "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 107, "version": 1, "versionNonce": 107, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "GitHub Actions (CI)\nlint (eslint + markdownlint)\ntypecheck + unit tests\nPlaywright e2e (web vs local Worker)\nMaestro smoke (Expo Go emulator)",
+      "text": "GitHub Actions\nCI: lint · typecheck · unit tests\nPlaywright e2e (web vs local Worker)\nMaestro smoke (Expo Go emulator)\nRelease: package.json bump on main\n→ deploy PWA + EAS build + tag",
       "fontSize": 15, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
-      "containerId": null, "originalText": "GitHub Actions (CI)\nlint (eslint + markdownlint)\ntypecheck + unit tests\nPlaywright e2e (web vs local Worker)\nMaestro smoke (Expo Go emulator)",
+      "containerId": null, "originalText": "GitHub Actions\nCI: lint · typecheck · unit tests\nPlaywright e2e (web vs local Worker)\nMaestro smoke (Expo Go emulator)\nRelease: package.json bump on main\n→ deploy PWA + EAS build + tag",
       "lineHeight": 1.25
     },
 
@@ -90,15 +90,15 @@
       "boundElements": null, "updated": 1, "link": null, "locked": false
     },
     {
-      "id": "txt-eas", "type": "text", "x": 414, "y": 342, "width": 254, "height": 94,
+      "id": "txt-eas", "type": "text", "x": 414, "y": 342, "width": 254, "height": 113,
       "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 109, "version": 1, "versionNonce": 109, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "EAS Build (Expo cloud)\npreview profile → signed APK\nkeystore managed by EAS\nbakes EXPO_PUBLIC_* URLs\nfrom the EAS 'preview' env",
+      "text": "EAS Build (Expo cloud)\nproduction (release.yml) and\npreview (dispatch) → signed APK\nkeystore managed by EAS\nbakes EXPO_PUBLIC_* URLs\nfrom the matching EAS env",
       "fontSize": 15, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
-      "containerId": null, "originalText": "EAS Build (Expo cloud)\npreview profile → signed APK\nkeystore managed by EAS\nbakes EXPO_PUBLIC_* URLs\nfrom the EAS 'preview' env",
+      "containerId": null, "originalText": "EAS Build (Expo cloud)\nproduction (release.yml) and\npreview (dispatch) → signed APK\nkeystore managed by EAS\nbakes EXPO_PUBLIC_* URLs\nfrom the matching EAS env",
       "lineHeight": 1.25
     },
 
@@ -111,15 +111,15 @@
       "boundElements": null, "updated": 1, "link": null, "locked": false
     },
     {
-      "id": "txt-phone", "type": "text", "x": 774, "y": 342, "width": 224, "height": 56,
+      "id": "txt-phone", "type": "text", "x": 774, "y": 342, "width": 224, "height": 57,
       "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 111, "version": 1, "versionNonce": 111, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "Android phone\nsideloaded preview APK\n(no Play Store)",
+      "text": "Android phone\nsideloaded APK (prod/preview,\nno Play Store) · Expo Go (dev)",
       "fontSize": 15, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
-      "containerId": null, "originalText": "Android phone\nsideloaded preview APK\n(no Play Store)",
+      "containerId": null, "originalText": "Android phone\nsideloaded APK (prod/preview,\nno Play Store) · Expo Go (dev)",
       "lineHeight": 1.25
     },
 
@@ -132,15 +132,15 @@
       "boundElements": null, "updated": 1, "link": null, "locked": false
     },
     {
-      "id": "txt-cf", "type": "text", "x": 1134, "y": 252, "width": 284, "height": 94,
+      "id": "txt-cf", "type": "text", "x": 1134, "y": 252, "width": 284, "height": 113,
       "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 113, "version": 1, "versionNonce": 113, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "Cloudflare\nWorker: trapcard-party\nLobbyDO (live game state)\nD1 (users · devices · history)\nKV (auth tokens)",
+      "text": "Cloudflare\nWorker: trapcard-party\nserves the PWA (static assets)\nLobbyDO (live game state)\nD1 (users · devices · history)\nKV (auth tokens)",
       "fontSize": 15, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
-      "containerId": null, "originalText": "Cloudflare\nWorker: trapcard-party\nLobbyDO (live game state)\nD1 (users · devices · history)\nKV (auth tokens)",
+      "containerId": null, "originalText": "Cloudflare\nWorker: trapcard-party\nserves the PWA (static assets)\nLobbyDO (live game state)\nD1 (users · devices · history)\nKV (auth tokens)",
       "lineHeight": 1.25
     },
 
@@ -153,15 +153,15 @@
       "boundElements": null, "updated": 1, "link": null, "locked": false
     },
     {
-      "id": "txt-web", "type": "text", "x": 1194, "y": 52, "width": 194, "height": 38,
+      "id": "txt-web", "type": "text", "x": 1194, "y": 52, "width": 194, "height": 57,
       "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 115, "version": 1, "versionNonce": 115, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "Web client (test)\nexpo web build",
+      "text": "iPhone PWA + web client\ninstalled via Safari\n(served by the Worker)",
       "fontSize": 15, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
-      "containerId": null, "originalText": "Web client (test)\nexpo web build",
+      "containerId": null, "originalText": "iPhone PWA + web client\ninstalled via Safari\n(served by the Worker)",
       "lineHeight": 1.25
     },
 
@@ -260,14 +260,14 @@
       "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
     },
     {
-      "id": "lbl-dev-eas", "type": "text", "x": 282, "y": 385, "width": 130, "height": 18,
+      "id": "lbl-dev-eas", "type": "text", "x": 300, "y": 372, "width": 95, "height": 36,
       "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 125, "version": 1, "versionNonce": 125, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "npx eas-cli build", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
-      "verticalAlign": "top", "containerId": null, "originalText": "npx eas-cli build", "lineHeight": 1.25
+      "text": "eas-cli build\n(manual)", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
+      "verticalAlign": "top", "containerId": null, "originalText": "eas-cli build\n(manual)", "lineHeight": 1.25
     },
 
     {
@@ -281,14 +281,14 @@
       "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
     },
     {
-      "id": "lbl-eas-phone", "type": "text", "x": 655, "y": 372, "width": 130, "height": 18,
+      "id": "lbl-eas-phone", "type": "text", "x": 686, "y": 374, "width": 70, "height": 18,
       "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 127, "version": 1, "versionNonce": 127, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "QR / install page", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
-      "verticalAlign": "top", "containerId": null, "originalText": "QR / install page", "lineHeight": 1.25
+      "text": "QR install", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
+      "verticalAlign": "top", "containerId": null, "originalText": "QR install", "lineHeight": 1.25
     },
 
     {
@@ -309,9 +309,9 @@
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 129, "version": 1, "versionNonce": 129, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "npx wrangler deploy · db:apply:remote (manual)", "fontSize": 13,
+      "text": "manual deploy path (first-time setup — docs/runsheets)", "fontSize": 13,
       "fontFamily": 1, "textAlign": "left", "verticalAlign": "top", "containerId": null,
-      "originalText": "npx wrangler deploy · db:apply:remote (manual)", "lineHeight": 1.25
+      "originalText": "manual deploy path (first-time setup — docs/runsheets)", "lineHeight": 1.25
     },
 
     {
@@ -410,7 +410,7 @@
       "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
     },
     {
-      "id": "lbl-fcm-phone", "type": "text", "x": 852, "y": 508, "width": 120, "height": 18,
+      "id": "lbl-fcm-phone", "type": "text", "x": 848, "y": 478, "width": 120, "height": 18,
       "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
@@ -442,16 +442,77 @@
     },
 
     {
+      "id": "arr-actions-cf", "type": "arrow", "x": 1050, "y": 160, "width": 220, "height": 80,
+      "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": { "type": 2 },
+      "seed": 143, "version": 1, "versionNonce": 143, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "points": [[0, 0], [220, 0], [220, 80]], "lastCommittedPoint": null,
+      "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
+    },
+    {
+      "id": "lbl-actions-cf", "type": "text", "x": 1078, "y": 138, "width": 200, "height": 18,
+      "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
+      "seed": 144, "version": 1, "versionNonce": 144, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "text": "release: deploy PWA + Worker", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
+      "verticalAlign": "top", "containerId": null, "originalText": "release: deploy PWA + Worker", "lineHeight": 1.25
+    },
+    {
+      "id": "arr-actions-eas", "type": "arrow", "x": 780, "y": 200, "width": 240, "height": 130,
+      "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": { "type": 2 },
+      "seed": 145, "version": 1, "versionNonce": 145, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "points": [[0, 0], [0, 62], [-240, 62], [-240, 130]], "lastCommittedPoint": null,
+      "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
+    },
+    {
+      "id": "lbl-actions-eas", "type": "text", "x": 548, "y": 238, "width": 280, "height": 18,
+      "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
+      "seed": 146, "version": 1, "versionNonce": 146, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "text": "release.yml → EAS build (prod · preview)", "fontSize": 13, "fontFamily": 1, "textAlign": "left",
+      "verticalAlign": "top", "containerId": null, "originalText": "release.yml → EAS build (prod · preview)", "lineHeight": 1.25
+    },
+    {
+      "id": "arr-dev-expogo", "type": "arrow", "x": 165, "y": 490, "width": 825, "height": 55,
+      "angle": 0, "strokeColor": "#1e1e1e", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": { "type": 2 },
+      "seed": 147, "version": 1, "versionNonce": 147, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "points": [[0, 0], [0, 35], [825, 35], [825, -20]], "lastCommittedPoint": null,
+      "startBinding": null, "endBinding": null, "startArrowhead": null, "endArrowhead": "arrow"
+    },
+    {
+      "id": "lbl-dev-expogo", "type": "text", "x": 250, "y": 500, "width": 320, "height": 18,
+      "angle": 0, "strokeColor": "#495057", "backgroundColor": "transparent",
+      "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
+      "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
+      "seed": 148, "version": 1, "versionNonce": 148, "isDeleted": false,
+      "boundElements": null, "updated": 1, "link": null, "locked": false,
+      "text": "expo start → Expo Go over LAN (dev, local Worker)", "fontSize": 13,
+      "fontFamily": 1, "textAlign": "left", "verticalAlign": "top", "containerId": null,
+      "originalText": "expo start → Expo Go over LAN (dev, local Worker)", "lineHeight": 1.25
+    },
+    {
       "id": "legend", "type": "text", "x": 40, "y": 820, "width": 480, "height": 18,
       "angle": 0, "strokeColor": "#868e96", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 1, "strokeStyle": "solid", "roughness": 1,
       "opacity": 100, "groupIds": [], "frameId": null, "roundness": null,
       "seed": 142, "version": 1, "versionNonce": 142, "isDeleted": false,
       "boundElements": null, "updated": 1, "link": null, "locked": false,
-      "text": "solid arrows = code/runtime flows · dashed = build-time config · CI never deploys (manual runbooks)",
+      "text": "solid arrows = code/runtime flows · dashed = build-time config · releases automated by release.yml (runsheets = first-time/manual)",
       "fontSize": 13, "fontFamily": 1, "textAlign": "left", "verticalAlign": "top",
       "containerId": null,
-      "originalText": "solid arrows = code/runtime flows · dashed = build-time config · CI never deploys (manual runbooks)",
+      "originalText": "solid arrows = code/runtime flows · dashed = build-time config · releases automated by release.yml (runsheets = first-time/manual)",
       "lineHeight": 1.25
     }
   ]
