@@ -28,6 +28,7 @@ import {
 } from '../src/lib/lobbies';
 import { PressableScale } from '../src/ui/PressableScale';
 import { Screen } from '../src/ui/Screen';
+import { Wordmark } from '../src/ui/Wordmark';
 
 /** Persisted preference key for whether completed lobbies are revealed. */
 const SHOW_COMPLETED_KEY = 'pref_show_completed';
@@ -156,7 +157,7 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return (
       <Screen style={styles.container}>
-        <Text style={styles.heading}>Trap Card Game</Text>
+        <Wordmark />
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
         <Pressable
           testID="signin-cta"
