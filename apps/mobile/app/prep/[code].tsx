@@ -11,7 +11,7 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { MAX_STATEMENT_LENGTH } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
-import { PressableScale } from '../../src/ui/PressableScale';
+import { Button } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
 import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 
@@ -81,14 +81,14 @@ export default function PrepScreen() {
         {hasSubmitted ? (
           <Text style={styles.submitted}>Submitted ✓</Text>
         ) : (
-          <PressableScale
+          <Button
             testID="submit-cards"
-            style={[styles.button, !allValid && styles.buttonDisabled]}
-            onPress={submit}
+            title="Submit cards"
+            variant="accent"
             disabled={!allValid}
-          >
-            <Text style={styles.buttonText}>Submit cards</Text>
-          </PressableScale>
+            style={styles.submitButton}
+            onPress={submit}
+          />
         )}
 
         <Text style={styles.section}>Players</Text>
@@ -112,16 +112,14 @@ export default function PrepScreen() {
       </ScrollView>
 
       {isOwner ? (
-        <PressableScale
+        <Button
           testID="begin-game"
-          style={[styles.button, styles.beginButton, !allSubmitted && styles.buttonDisabled]}
-          onPress={() => gameStore.getState().startGame()}
+          title={allSubmitted ? 'Begin game' : 'Waiting for all to submit'}
+          variant="accent"
           disabled={!allSubmitted}
-        >
-          <Text style={styles.buttonText}>
-            {allSubmitted ? 'Begin game' : 'Waiting for all to submit'}
-          </Text>
-        </PressableScale>
+          style={styles.beginButton}
+          onPress={() => gameStore.getState().startGame()}
+        />
       ) : (
         <Text style={styles.subtleFooter}>Waiting for the host to begin…</Text>
       )}
@@ -163,14 +161,6 @@ const styles = StyleSheet.create({
   playerName: { color: colors.text, fontSize: 15 },
   ready: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   notReady: { color: colors.muted, fontSize: 14 },
-  button: {
-    backgroundColor: colors.accent,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
+  submitButton: { marginTop: 12 },
   beginButton: { margin: 16, marginTop: 0 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
 });

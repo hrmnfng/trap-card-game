@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,7 +11,7 @@ import { useAuth } from '../src/state/hooks';
 import { api } from '../src/lib/apiSingleton';
 import { registerForPushNotifications } from '../src/lib/push';
 import { colors } from '../src/lib/theme';
-import { PressableScale } from '../src/ui/PressableScale';
+import { Button, LinkButton } from '../src/ui/Button';
 import { Screen } from '../src/ui/Screen';
 
 type Mode = 'login' | 'register';
@@ -70,32 +68,18 @@ export default function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <PressableScale
+        <Button
           testID="auth-submit"
-          style={[styles.button, loading && styles.buttonDisabled]}
+          title={mode === 'login' ? 'Sign in' : 'Register'}
+          loading={loading}
           onPress={submit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={styles.buttonText}>
-              {mode === 'login' ? 'Sign in' : 'Register'}
-            </Text>
-          )}
-        </PressableScale>
+        />
 
-        <Pressable
+        <LinkButton
           testID="auth-toggle"
-          style={styles.linkButton}
+          title={mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
           onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
-        >
-          <Text style={styles.linkText}>
-            {mode === 'login'
-              ? "Don't have an account? Register"
-              : 'Already have an account? Sign in'}
-          </Text>
-        </Pressable>
+        />
       </MotiView>
     </Screen>
   );
@@ -115,14 +99,4 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   error: { color: colors.danger, fontSize: 14 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 8 },
-  linkText: { color: colors.muted, fontSize: 14 },
 });

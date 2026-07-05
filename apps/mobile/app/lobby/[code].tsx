@@ -5,7 +5,7 @@ import { MotiView } from 'moti';
 import * as Clipboard from 'expo-clipboard';
 import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
-import { PressableScale } from '../../src/ui/PressableScale';
+import { Button, LinkButton } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
 import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 
@@ -89,36 +89,34 @@ export default function LobbyScreen() {
           ListEmptyComponent={<Text style={styles.subtle}>Waiting for players…</Text>}
         />
 
-        <PressableScale
+        <Button
           testID="ready-toggle"
-          style={[styles.button, iAmReady && styles.buttonSecondary]}
+          title={iAmReady ? "I'm not ready" : "I'm ready"}
+          variant={iAmReady ? 'surface' : 'accent'}
+          style={styles.stackedButton}
           onPress={() => gameStore.getState().setReady(!iAmReady)}
-        >
-          <Text style={styles.buttonText}>{iAmReady ? "I'm not ready" : "I'm ready"}</Text>
-        </PressableScale>
+        />
 
         {isOwner ? (
-          <PressableScale
+          <Button
             testID="start-game"
-            style={[styles.button, !canStart && styles.buttonDisabled]}
-            onPress={() => gameStore.getState().startPrep()}
-            disabled={!canStart}
-          >
-            <Text style={styles.buttonText}>
-              {canStart
+            title={
+              canStart
                 ? 'Start (author cards)'
                 : players.length < MIN_PLAYERS
                   ? `Need ${MIN_PLAYERS}+ players`
-                  : 'Waiting for all to ready'}
-            </Text>
-          </PressableScale>
+                  : 'Waiting for all to ready'
+            }
+            variant="accent"
+            disabled={!canStart}
+            style={styles.stackedButton}
+            onPress={() => gameStore.getState().startPrep()}
+          />
         ) : (
           <Text style={styles.subtle}>Waiting for the host to start…</Text>
         )}
 
-        <Pressable style={styles.linkButton} onPress={leave}>
-          <Text style={styles.linkText}>Leave lobby</Text>
-        </Pressable>
+        <LinkButton title="Leave lobby" onPress={leave} />
       </MotiView>
     </Screen>
   );
@@ -145,16 +143,5 @@ const styles = StyleSheet.create({
   ready: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   notReady: { color: colors.muted, fontSize: 14 },
   subtle: { color: colors.muted, fontSize: 14 },
-  button: {
-    backgroundColor: colors.accent,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonSecondary: { backgroundColor: colors.surface },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 8 },
-  linkText: { color: colors.muted, fontSize: 14 },
+  stackedButton: { marginTop: 8 },
 });

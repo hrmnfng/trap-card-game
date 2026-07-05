@@ -12,6 +12,7 @@ import { AnimatePresence, MotiView } from 'moti';
 import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
+import { Button, LinkButton } from '../../src/ui/Button';
 import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
@@ -162,15 +163,11 @@ export default function GameScreen() {
                 ? '🏆 You sprung all your traps first!'
                 : `🏆 ${winnerUsername ?? 'Someone'} sprung all their traps first`}
             </Text>
-            <Pressable style={styles.button} onPress={leave}>
-              <Text style={styles.buttonText}>Back to home</Text>
-            </Pressable>
+            <Button title="Back to home" onPress={leave} />
           </MotiView>
         </>
       ) : (
-        <Pressable style={styles.linkButton} onPress={leave}>
-          <Text style={styles.linkText}>Return to lobby</Text>
-        </Pressable>
+        <LinkButton title="Return to lobby" style={styles.returnLink} onPress={leave} />
       )}
 
       <View
@@ -250,15 +247,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   endedText: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 14 },
-  linkText: { color: colors.muted, fontSize: 14 },
+  returnLink: { paddingVertical: 14 },
   flightCard: {
     position: 'absolute',
     width: 34,

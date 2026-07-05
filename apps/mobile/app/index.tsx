@@ -26,7 +26,7 @@ import {
   LOBBY_SORT_LABELS,
   type LobbySortMode,
 } from '../src/lib/lobbies';
-import { PressableScale } from '../src/ui/PressableScale';
+import { Button, LinkButton } from '../src/ui/Button';
 import { Screen } from '../src/ui/Screen';
 import { Wordmark } from '../src/ui/Wordmark';
 
@@ -159,13 +159,7 @@ export default function HomeScreen() {
       <Screen style={styles.container}>
         <Wordmark />
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
-        <Pressable
-          testID="signin-cta"
-          style={styles.button}
-          onPress={() => router.push('/login')}
-        >
-          <Text style={styles.buttonText}>Sign in / Register</Text>
-        </Pressable>
+        <Button testID="signin-cta" title="Sign in / Register" onPress={() => router.push('/login')} />
       </Screen>
     );
   }
@@ -218,14 +212,12 @@ export default function HomeScreen() {
       >
         <Text style={styles.heading}>Welcome, {username}</Text>
 
-        <PressableScale
+        <Button
           testID="create-lobby"
-          style={[styles.button, creating && styles.buttonDisabled]}
-          onPress={createLobby}
+          title={creating ? 'Creating…' : 'Create lobby'}
           disabled={creating}
-        >
-          <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
-        </PressableScale>
+          onPress={createLobby}
+        />
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Your lobbies</Text>
@@ -286,20 +278,10 @@ export default function HomeScreen() {
             value={joinCode}
             onChangeText={setJoinCode}
           />
-          <Pressable testID="join-lobby" style={styles.button} onPress={joinLobby}>
-            <Text style={styles.buttonText}>Join</Text>
-          </Pressable>
+          <Button testID="join-lobby" title="Join" style={styles.joinButton} onPress={joinLobby} />
         </View>
 
-        <Pressable
-          testID="logout"
-          style={styles.linkButton}
-          onPress={() => {
-            void authStore.getState().logout();
-          }}
-        >
-          <Text style={styles.linkText}>Log out</Text>
-        </Pressable>
+        <LinkButton testID="logout" title="Log out" onPress={() => { void authStore.getState().logout(); }} />
       </MotiView>
     </Screen>
   );
@@ -309,15 +291,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
   heading: { color: colors.text, fontSize: 28, fontWeight: '700' },
   subtle: { color: colors.muted, fontSize: 16 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  joinButton: { paddingHorizontal: 20 },
   sectionLabel: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 8 },
   sectionHeader: {
     color: colors.muted,
@@ -361,6 +335,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  linkButton: { alignItems: 'center', paddingVertical: 8 },
-  linkText: { color: colors.muted, fontSize: 14 },
 });
