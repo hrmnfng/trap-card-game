@@ -7,23 +7,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { MAX_STATEMENT_LENGTH } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PressableScale } from '../../src/ui/PressableScale';
 import { Screen } from '../../src/ui/Screen';
-import { screenForState } from '../../src/lib/navigation';
+import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 
 export default function PrepScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const lobbyCode = useGame((s) => s.lobbyCode);
-  const error = useGame((s) => s.error);
+  const { userId, gameState, hasSubmitted, error } = useLobbyScreen('prep', code);
 
   const cardsPerPlayer = gameState?.cardsPerPlayer ?? 3;
   const [statements, setStatements] = useState<string[]>([]);
@@ -37,23 +31,6 @@ export default function PrepScreen() {
       return next;
     });
   }, [cardsPerPlayer]);
-
-  // Reconnect if opened directly.
-  useEffect(() => {
-    if (code && userId && username && lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  const me = gameState?.players.find((p) => p.id === userId);
-  const hasSubmitted = me?.hasSubmitted ?? false;
-
-  // Route forward/back when status changes (game start, or back to lobby).
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, hasSubmitted);
-    if (target !== 'prep') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 

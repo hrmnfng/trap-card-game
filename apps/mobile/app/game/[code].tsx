@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,9 +11,8 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { AnimatePresence, MotiView } from 'moti';
 import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
-import { screenForState } from '../../src/lib/navigation';
+import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
 import { IncomingReveal } from '../../src/ui/IncomingReveal';
@@ -23,11 +22,7 @@ import { Screen } from '../../src/ui/Screen';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const lobbyCode = useGame((s) => s.lobbyCode);
+  const { userId, gameState } = useLobbyScreen('game', code);
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -41,20 +36,6 @@ export default function GameScreen() {
     to: { x: number; y: number };
   } | null>(null);
   const reduce = useReducedMotion();
-
-  // Reconnect if this screen is opened directly (deep link / reload).
-  useEffect(() => {
-    if (code && userId && username && lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  const me = gameState?.players.find((p) => p.id === userId);
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
-    if (target !== 'game') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 

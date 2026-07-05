@@ -4,23 +4,16 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import * as Clipboard from 'expo-clipboard';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
 import { PressableScale } from '../../src/ui/PressableScale';
 import { Screen } from '../../src/ui/Screen';
-import { screenForState } from '../../src/lib/navigation';
+import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 
 const MIN_PLAYERS = 2;
 
 export default function LobbyScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const connectionStatus = useGame((s) => s.connectionStatus);
-  const lobbyCode = useGame((s) => s.lobbyCode);
-  const error = useGame((s) => s.error);
+  const { userId, gameState, me, connectionStatus, error } = useLobbyScreen('lobby', code);
 
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,21 +32,6 @@ export default function LobbyScreen() {
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!code || !userId || !username) return;
-    if (lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  // Advance to prep/game when the status moves on.
-  const me = gameState?.players.find((p) => p.id === userId);
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
-    if (target !== 'lobby') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
