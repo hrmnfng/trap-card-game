@@ -19,8 +19,8 @@ An npm-workspace monorepo on TypeScript (Node 24):
   types, the WebSocket message contract, and the pure, deterministic game rules.
 
 Auth is username + password only (PBKDF2 via Web Crypto, no email/recovery); tokens
-are opaque values in KV. Push notifications use **Expo Push** (mobile only, requires
-an Expo Dev Build on device).
+are opaque values in KV. Push notifications use **Expo Push** (Android binary builds
+only — not Expo Go or web).
 
 Two design choices worth knowing up front:
 
@@ -81,42 +81,24 @@ To change things: game rules → `packages/shared/src/gameRules.ts`; the WS cont
 `messages.ts` (both ends); a REST endpoint → `apps/party/src/server.ts`; a screen →
 `apps/mobile/app/*` + a store in `src/state/`.
 
-## Prerequisites
+## Getting started
 
-- Node.js 24+ and npm (workspaces).
-- A Cloudflare account (for remote deploy; local dev uses Miniflare, no account
-  needed).
-- Expo tooling for the mobile app (`npx expo …`); an Expo Dev Build for on-device
-  push.
-
-## Setup
+Node.js 24+ and npm. Local dev needs no Cloudflare account (Miniflare simulates
+D1/KV/DO):
 
 ```bash
-npm install          # installs all workspaces from the repo root
-```
+npm install                 # from the repo root; installs all workspaces
 
-## Running locally
-
-**Worker** (from `apps/party`):
-
-```bash
-npm run db:apply:local      # apply src/db/schema.sql to the local (Miniflare) D1
+# Worker, from apps/party:
+npm run db:apply:local      # apply src/db/schema.sql to the local D1
 npx wrangler dev            # serves on http://127.0.0.1:8787
-```
 
-**Mobile** (from `apps/mobile`): create a git-ignored `.env`, then start Expo:
-
-```bash
-# .env
-EXPO_PUBLIC_API_BASE_URL=http://<LAN-IP>:8787   # localhost for web/simulator
-EXPO_PUBLIC_PARTY_HOST=<LAN-IP>:8787            # host:port, no scheme
-```
-
-```bash
+# Mobile, from apps/mobile: point a git-ignored .env at the Worker, then
 npx expo start              # press w (web), i/a (simulators), or scan for a device
 ```
 
-See `QUICKSTART.md` for the end-to-end local + deploy walkthrough.
+`QUICKSTART.md` walks this end-to-end, including running on a physical phone
+over LAN and the `.env` values.
 
 ## Testing & typechecking
 
@@ -143,19 +125,22 @@ Mobile health checks (from `apps/mobile`): `npx expo-doctor`, `npx expo install 
 > segfault; DO storage cleanup can hit `EBUSY`). See `AGENTS.md` for details and the
 > reliable test patterns.
 
-## Deploying
+## Releases & deployment
 
-```bash
-# from apps/party
-npx wrangler d1 create trapcard            # -> copy database_id into wrangler.toml
-npx wrangler kv namespace create TOKENS    # -> copy id into wrangler.toml
-npm run db:apply:remote                    # apply schema to the remote D1
-npx wrangler deploy                        # deploy the Worker
-```
+Day-to-day releases are automated by `.github/workflows/release.yml`: bumping the
+root `package.json` version on `main` deploys production (Worker + PWA, Android
+EAS build, semver tag); a manual workflow dispatch builds an **Android-only**
+preview.
 
-Point the production app config at the deployed URL via `EXPO_PUBLIC_*`, and build
-the mobile app with EAS (`eas build`; add `-m "<message>"` to label the build on
-expo.dev). Full steps in `QUICKSTART.md`.
+For first-time setup or a manual deploy, follow the runsheets in
+[`docs/runsheets/`](docs/runsheets/):
+
+- [`cloudflare-setup.md`](docs/runsheets/cloudflare-setup.md) — provision D1/KV,
+  wire `wrangler.toml`, deploy and smoke-test the Worker.
+- [`pwa-deploy.md`](docs/runsheets/pwa-deploy.md) — export the web build with
+  production config, ship it with the Worker, iPhone install checklist.
+- [`android-deploy.md`](docs/runsheets/android-deploy.md) — signed preview APK
+  via EAS (sideload) + FCM push validated end-to-end.
 
 ## Project structure
 
@@ -166,7 +151,9 @@ trap-card-game/
 │   └── party/             # Worker + LobbyDO (src/, test/, src/db/schema.sql)
 ├── packages/
 │   └── shared/            # @trap/shared: types, messages, gameRules
-├── docs/superpowers/      # feature specs & implementation plans
+├── docs/
+│   ├── runsheets/         # operational runbooks (Cloudflare, Android, PWA deploys)
+│   └── superpowers/       # feature specs & implementation plans
 ├── plans/                 # migration plan + remaining work
 ├── AGENTS.md              # conventions, gotchas, resolved confusion points
 ├── CLAUDE.md              # guidance for Claude Code
