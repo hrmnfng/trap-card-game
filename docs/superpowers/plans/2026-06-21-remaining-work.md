@@ -351,7 +351,12 @@ so effects run on both mobile and web. **Deferred** until functional parity is p
 do not start before Phases A–C. **Still deferred as of 2026-07-02:** with iOS served
 as a PWA, effects must be validated in Safari/WebKit (standalone mode) as a
 first-class target, which may change which libraries/approaches below are viable —
-revisit this outline once the PWA ships.
+revisit this outline once the PWA ships. **Superseded 2026-07-05:** the R3F/expo-gl
+outline was replaced by the 2026-07-04 game-feel spec (moti/transform-only, PWA-first —
+no GL, no new native deps), implemented on `feat/game-feel-enhancements`: card travel
+animation, incoming-hit reveal (single + coalesced), Home wordmark, "T!" launcher icon,
+compact history timeline, and lobby sort. Win/lose web parity remains the one open
+polish item (D5's web half).
 
 This phase is an outline (not bite-sized steps) because the effects are creative and
 should be brainstormed before implementation. Acceptance is visual + "no regression in
