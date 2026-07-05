@@ -40,7 +40,7 @@ jobs:
       version: ${{ steps.gate.outputs.version }}
       release: ${{ steps.gate.outputs.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # need all tags for the comparison
       - name: Read and validate the version
@@ -78,8 +78,8 @@ jobs:
       EXPO_PUBLIC_API_BASE_URL: ${{ vars.EXPO_PUBLIC_API_BASE_URL }}
       EXPO_PUBLIC_PARTY_HOST: ${{ vars.EXPO_PUBLIC_PARTY_HOST }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -125,8 +125,8 @@ jobs:
     outputs:
       build_url: ${{ steps.eas.outputs.build_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -162,7 +162,7 @@ jobs:
     if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create tag and Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -189,8 +189,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
@@ -223,7 +223,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Compare the version against the base branch
         id: detect
         env:
