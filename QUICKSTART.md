@@ -1,13 +1,14 @@
 # Quick Start
 
-Get the Trap Card Game running locally, then deploy it. For architecture and the
-full command reference see `README.md`; for conventions and gotchas see `AGENTS.md`.
+Get the Trap Card Game running locally and verify it. For architecture see
+`README.md`; for conventions and gotchas see `AGENTS.md`; for deployment see the
+runsheets in `docs/runsheets/` (§3).
 
 ## Prerequisites
 
 - Node.js 24+ and npm.
 - Expo tooling (`npx expo …`) for the mobile app.
-- A Cloudflare account — only for the deploy section (local dev uses Miniflare).
+- No Cloudflare account needed — local dev uses Miniflare.
 
 ```bash
 npm install            # from the repo root; installs all workspaces
@@ -89,8 +90,8 @@ deploy or credentials required. The phone and the dev machine must be on the
 
 No code changes are required — the app reads the Worker URL from the
 `EXPO_PUBLIC_*` env. This runs the full app, including the native-only win/lose
-confetti. Remote **push notifications** are limited in Expo Go (SDK 54); they need
-a dev build (see §3).
+confetti. Remote **push notifications** don't work in Expo Go (SDK 54); they need
+a real binary — see `docs/runsheets/android-deploy.md`.
 
 ### Try it with two clients
 
@@ -119,41 +120,26 @@ Playwright suite covers the two-client lobby/play flow end-to-end; it starts/reu
 first, so it frees ports `8081`/`8787` and never reuses a mismatched server — see the
 Troubleshooting note below.)
 
-## 3. Deploy to Cloudflare
+## 3. Deploy
 
-From `apps/party` (after `npx wrangler login`):
+Day-to-day releases are automated by `.github/workflows/release.yml`: bumping the
+root `package.json` version on `main` deploys production (Worker + PWA, Android
+EAS build, semver tag); a manual workflow dispatch builds an **Android-only**
+preview.
 
-```bash
-npx wrangler d1 create trapcard            # copy database_id -> wrangler.toml
-npx wrangler kv namespace create TOKENS    # copy id          -> wrangler.toml
-npm run db:apply:remote                    # apply schema to the remote D1
-npx wrangler deploy                        # -> https://trapcard-party.<sub>.workers.dev
-```
+For first-time provisioning or a manual deploy, follow the runsheets — each is a
+step-by-step, user-executed runbook with expected outputs and a verification
+checklist:
 
-Smoke-test the deployed URL with the curls from step 1.
-
-### Production app config + push
-
-Point the app at the deployed Worker for production builds:
-
-```bash
-EXPO_PUBLIC_API_BASE_URL=https://trapcard-party.<sub>.workers.dev
-EXPO_PUBLIC_PARTY_HOST=trapcard-party.<sub>.workers.dev
-```
-
-Push notifications need an Expo **Dev Build** (not Expo Go):
-
-```bash
-npx expo install expo-dev-client
-npx eas build --profile development --platform ios   # and/or android
-```
-
-Tag any EAS build with a short note via `-m "<message>"` — it shows on the build's
-page on expo.dev and in `npx eas-cli build:list`, which makes builds easy to tell
-apart (especially when building from uncommitted changes).
-
-After login on the device, confirm `POST /api/devices` registers a token
-(`npx wrangler tail`) and that a targeted card-play delivers a push.
+- [`docs/runsheets/cloudflare-setup.md`](docs/runsheets/cloudflare-setup.md) —
+  provision D1/KV, wire `wrangler.toml`, apply the remote schema, deploy and
+  smoke-test the Worker, point a local client at production.
+- [`docs/runsheets/pwa-deploy.md`](docs/runsheets/pwa-deploy.md) — export the web
+  build with production config, deploy it with the Worker, iPhone install
+  checklist. Repeat for every web release done by hand.
+- [`docs/runsheets/android-deploy.md`](docs/runsheets/android-deploy.md) — signed
+  preview APK via EAS (sideloaded, no store), Firebase/FCM setup, push validated
+  end-to-end on a physical phone.
 
 ## Troubleshooting
 

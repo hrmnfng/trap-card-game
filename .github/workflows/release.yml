@@ -1,7 +1,7 @@
 name: Release
 
 run-name: >-
-  Release · ${{ github.event_name == 'workflow_dispatch' && 'preview (Android only)' || 'production' }} · @${{ github.actor }}
+  Release · ${{ github.event_name == 'workflow_dispatch' && 'preview (Android only)' || github.event_name == 'pull_request' && 'version-bump notice' || 'production' }} · @${{ github.actor }}
 
 # Production: a push to main that changes the root package.json version.
 # (The paths filter fires on ANY root package.json edit — e.g. adding a dep —
@@ -9,15 +9,23 @@ run-name: >-
 # Preview: manual dispatch → Android EAS preview build only. The PWA has no
 # preview environment (see AGENTS.md); it is pre-validated by the
 # exported-build Playwright suite and deploys to production only.
+# Pull requests: version-bump-notice only — a comment warning that merging
+# will trigger a production release. Every other job is gated on event_name,
+# so nothing builds or deploys from a PR.
 on:
   push:
     branches: [main]
     paths: [package.json]
+  pull_request:
+    branches: [main]
+    paths: [package.json]
   workflow_dispatch:
 
-# Never interleave two releases; don't cancel one already in flight.
+# Never interleave two releases; don't cancel one already in flight. PR
+# notice runs get a per-PR group so they never queue behind (or displace)
+# a real release.
 concurrency:
-  group: release
+  group: ${{ github.event_name == 'pull_request' && format('release-pr-{0}', github.event.pull_request.number) || 'release' }}
   cancel-in-progress: false
 
 permissions:
@@ -185,3 +193,56 @@ jobs:
           npx eas-cli build --profile preview --platform android \
             --non-interactive \
             -m "preview ${GITHUB_SHA::7} (${GITHUB_REF_NAME})"
+
+  version-bump-notice:
+    name: Version-bump notice (PR comment)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Job-level override: this is the only job that writes to PRs, and it
+    # needs nothing else (checkout reads the merge ref).
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the version against the base branch
+        id: detect
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          BASE=$(git show FETCH_HEAD:package.json | jq -r .version)
+          HEAD=$(jq -r .version package.json)
+          echo "Base version: $BASE — PR version: $HEAD"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "changed=$([ "$BASE" != "$HEAD" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      # Upsert keyed on a hidden marker: PRs see many pushes, and each
+      # synchronize re-runs this job — edit the existing comment instead of
+      # stacking duplicates. If a later push reverts the bump, the comment is
+      # corrected rather than left stale.
+      - name: Post or update the PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ steps.detect.outputs.base }}
+          HEAD: ${{ steps.detect.outputs.head }}
+          CHANGED: ${{ steps.detect.outputs.changed }}
+        run: |
+          MARKER='<!-- release-version-bump-notice -->'
+          if [ "$CHANGED" = "true" ]; then
+            BODY=$(printf '%s\n🏷️ **Version change detected:** `%s` → `%s`.\n\nMerging this PR to `main` will trigger the production release pipeline (PWA deploy + Android EAS build + tag `v%s`).' "$MARKER" "$BASE" "$HEAD" "$HEAD")
+          else
+            BODY=$(printf '%s\n`package.json` is modified but the version is unchanged (`%s`) — merging will **not** trigger a release.' "$MARKER" "$HEAD")
+          fi
+          EXISTING=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$EXISTING" -f body="$BODY" >/dev/null
+            echo "Updated comment $EXISTING"
+          elif [ "$CHANGED" = "true" ]; then
+            gh pr comment "$PR" --body "$BODY"
+            echo "Posted new comment"
+          else
+            echo "No version change and no prior notice — nothing to post."
+          fi
