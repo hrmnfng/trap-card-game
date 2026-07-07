@@ -10,8 +10,8 @@
  */
 import { useEffect } from 'react';
 import { router } from 'expo-router';
-import { gameStore } from './game';
-import { useAuth, useGame } from './hooks';
+import { gameStore } from '../state/game';
+import { useAuth, useGame } from '../state/hooks';
 import { screenForState, type GameScreen } from '../lib/navigation';
 
 export function useLobbyScreen(current: GameScreen, code: string | undefined) {

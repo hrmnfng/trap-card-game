@@ -14,7 +14,7 @@ import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
 import { Button, LinkButton } from '../../src/ui/Button';
-import { useLobbyScreen } from '../../src/state/useLobbyScreen';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
 import { IncomingReveal } from '../../src/ui/IncomingReveal';

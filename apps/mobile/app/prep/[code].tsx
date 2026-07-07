@@ -13,7 +13,7 @@ import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
 import { Button } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
-import { useLobbyScreen } from '../../src/state/useLobbyScreen';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 
 export default function PrepScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();

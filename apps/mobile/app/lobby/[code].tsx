@@ -9,7 +9,7 @@ import { Button, LinkButton } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
 import { RefreshButton } from '../../src/ui/RefreshButton';
 import { useRefresh } from '../../src/ui/useRefresh';
-import { useLobbyScreen } from '../../src/state/useLobbyScreen';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 
 const MIN_PLAYERS = 2;
 
