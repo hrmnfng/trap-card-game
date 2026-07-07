@@ -158,9 +158,13 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return (
       <Screen style={styles.container}>
-        <Wordmark />
-        <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
-        <Button testID="signin-cta" title="Sign in / Register" onPress={() => router.push('/login')} />
+        {/* flex-1 wrapper keeps the CTA stack centered while the footer pins to
+            the bottom, matching login and the authenticated Home. */}
+        <View style={styles.signinHero}>
+          <Wordmark />
+          <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
+          <Button testID="signin-cta" title="Sign in / Register" onPress={() => router.push('/login')} />
+        </View>
         <VersionFooter />
       </Screen>
     );
@@ -292,6 +296,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
+  signinHero: { flex: 1, justifyContent: 'center', gap: 16 },
   heading: { color: colors.text, fontSize: 28, fontWeight: '700' },
   subtle: { color: colors.muted, fontSize: 16 },
   joinButton: { paddingHorizontal: 20 },
