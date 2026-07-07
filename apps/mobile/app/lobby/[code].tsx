@@ -76,7 +76,12 @@ export default function LobbyScreen() {
         <FlatList
           style={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.muted}
+              colors={[colors.muted]}
+            />
           }
           data={players}
           keyExtractor={(p) => p.id}

@@ -93,7 +93,12 @@ export default function GameScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.muted}
+            colors={[colors.muted]}
+          />
         }
       >
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
