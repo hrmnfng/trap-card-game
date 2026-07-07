@@ -7,6 +7,9 @@ import { version } from '../../../package.json';
  * gates and tags on — on the login screen and both Home states.
  */
 test('login and home show the release version', async ({ page }) => {
+  await page.goto('/');
+  await expect(vis(page.getByTestId('app-version'))).toHaveText(`v${version}`);
+
   await page.goto('/login');
   await expect(vis(page.getByTestId('app-version'))).toHaveText(`v${version}`);
 
