@@ -28,6 +28,7 @@ import {
 } from '../src/lib/lobbies';
 import { Button, LinkButton } from '../src/ui/Button';
 import { Screen } from '../src/ui/Screen';
+import { VersionFooter } from '../src/ui/VersionFooter';
 import { Wordmark } from '../src/ui/Wordmark';
 
 /** Persisted preference key for whether completed lobbies are revealed. */
@@ -160,6 +161,7 @@ export default function HomeScreen() {
         <Wordmark />
         <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
         <Button testID="signin-cta" title="Sign in / Register" onPress={() => router.push('/login')} />
+        <VersionFooter />
       </Screen>
     );
   }
@@ -283,6 +285,7 @@ export default function HomeScreen() {
 
         <LinkButton testID="logout" title="Log out" onPress={() => { void authStore.getState().logout(); }} />
       </MotiView>
+      <VersionFooter />
     </Screen>
   );
 }

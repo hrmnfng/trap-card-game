@@ -13,6 +13,7 @@ import { registerForPushNotifications } from '../src/lib/push';
 import { colors } from '../src/lib/theme';
 import { Button, LinkButton } from '../src/ui/Button';
 import { Screen } from '../src/ui/Screen';
+import { VersionFooter } from '../src/ui/VersionFooter';
 
 type Mode = 'login' | 'register';
 
@@ -81,6 +82,7 @@ export default function LoginScreen() {
           onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
         />
       </MotiView>
+      <VersionFooter />
     </Screen>
   );
 }
