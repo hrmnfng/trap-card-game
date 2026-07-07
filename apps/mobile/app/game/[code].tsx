@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,7 +26,7 @@ import { useRefresh } from '../../src/ui/useRefresh';
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const { userId, gameState } = useLobbyScreen('game', code);
-  const { refreshing, onRefresh } = useRefresh();
+  const { refreshing, onRefresh, refreshControl } = useRefresh();
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -90,17 +89,7 @@ export default function GameScreen() {
 
   return (
     <Screen style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.muted}
-            colors={[colors.muted]}
-          />
-        }
-      >
+      <ScrollView contentContainerStyle={styles.scroll} refreshControl={refreshControl}>
         <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         <Text style={styles.section}>Opponents</Text>
         <Text style={styles.hint}>

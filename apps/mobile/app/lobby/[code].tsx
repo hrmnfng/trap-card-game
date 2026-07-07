@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import * as Clipboard from 'expo-clipboard';
@@ -16,7 +16,7 @@ const MIN_PLAYERS = 2;
 export default function LobbyScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const { userId, gameState, me, connectionStatus, error } = useLobbyScreen('lobby', code);
-  const { refreshing, onRefresh } = useRefresh();
+  const { refreshing, onRefresh, refreshControl } = useRefresh();
 
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,14 +75,7 @@ export default function LobbyScreen() {
 
         <FlatList
           style={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.muted}
-              colors={[colors.muted]}
-            />
-          }
+          refreshControl={refreshControl}
           data={players}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
