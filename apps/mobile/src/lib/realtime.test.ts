@@ -203,4 +203,51 @@ describe('LobbyConnection', () => {
       vi.useRealTimers();
     }
   });
+
+  describe('reconnect', () => {
+    // The shared makeFakeSocket returns a single socket per setup(), so it
+    // can't observe reconnect opening a *second* socket; this factory-made
+    // recorder can.
+    class RecordingSocket implements RealtimeSocket {
+      closed = false;
+      send(): void {}
+      close(): void {
+        this.closed = true;
+      }
+      addEventListener(): void {}
+    }
+
+    function recordingSetup() {
+      const sockets: RecordingSocket[] = [];
+      const conn = new LobbyConnection({
+        code: 'ABCD',
+        playerId: 'p1',
+        username: 'alice',
+        host: 'example.test',
+        socketFactory: () => {
+          const s = new RecordingSocket();
+          sockets.push(s);
+          return s;
+        },
+      });
+      return { conn, sockets };
+    }
+
+    it('closes the old socket and opens a fresh one', () => {
+      const { conn, sockets } = recordingSetup();
+      conn.connect();
+      expect(sockets).toHaveLength(1);
+
+      conn.reconnect();
+      expect(sockets).toHaveLength(2);
+      expect(sockets[0]!.closed).toBe(true);
+      expect(conn.getStatus()).toBe('connecting');
+    });
+
+    it('is a plain connect when never connected', () => {
+      const { conn, sockets } = recordingSetup();
+      conn.reconnect();
+      expect(sockets).toHaveLength(1);
+    });
+  });
 });

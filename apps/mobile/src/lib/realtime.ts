@@ -186,6 +186,16 @@ export class LobbyConnection {
     this.setStatus('closed');
   }
 
+  /**
+   * Tear down the current socket (if any) and open a fresh one with the same
+   * options. Used by pull-to-refresh when the socket isn't open: the DO pushes
+   * a state_update on connect, so fresh state arrives without a request.
+   */
+  reconnect(): void {
+    this.close();
+    this.connect();
+  }
+
   private setStatus(status: ConnectionStatus): void {
     this.status = status;
     for (const handler of this.statusHandlers) handler(status);
