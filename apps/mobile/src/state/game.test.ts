@@ -298,6 +298,21 @@ describe('refresh', () => {
     expect(settled).toBe(true);
   });
 
+  // A pull while the socket is still connecting must not restart the attempt:
+  // the DO pushes state on connect anyway, so just wait (the cap still applies).
+  it('while connecting, waits for the pushed state instead of reconnecting', async () => {
+    const conn = new RefreshFakeConnection();
+    conn.status = 'connecting';
+    const store = makeStore(conn);
+    store.getState().connect({ code: 'ABCD', playerId: 'p1', username: 'alice' });
+
+    const p = store.getState().refresh();
+    expect(conn.requested).toBe(0);
+    expect(conn.reconnected).toBe(0);
+    conn.emit({ type: 'state_update', state: sampleState });
+    await p;
+  });
+
   it('on a non-open socket, reconnects instead of requesting', async () => {
     const conn = new RefreshFakeConnection();
     conn.status = 'closed';
