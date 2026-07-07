@@ -99,19 +99,28 @@ export class LobbyConnection {
       if (this.status === 'connecting') this.setStatus('unreachable');
     }, LobbyConnection.CONNECT_TIMEOUT_MS);
 
-    this.socket = factory({
+    // Capture the socket so each listener can ignore events from a superseded
+    // socket: PartySocket delivers close (and buffered messages) async, so a
+    // reconnect()'s old socket can still fire after the replacement exists.
+    const socket = factory({
       host: this.options.host ?? config.partyHost,
       party: LOBBY_PARTY,
       room: this.options.code,
       query: { playerId: this.options.playerId, username: this.options.username },
     });
+    this.socket = socket;
 
-    this.socket.addEventListener('open', () => {
+    socket.addEventListener('open', () => {
+      if (this.socket !== socket) return;
       this.clearConnectTimer();
       this.setStatus('open');
     });
-    this.socket.addEventListener('close', () => this.setStatus('closed'));
-    this.socket.addEventListener('message', (ev: RealtimeMessageEvent) => {
+    socket.addEventListener('close', () => {
+      if (this.socket !== socket) return;
+      this.setStatus('closed');
+    });
+    socket.addEventListener('message', (ev: RealtimeMessageEvent) => {
+      if (this.socket !== socket) return;
       let parsed: unknown;
       try {
         parsed = JSON.parse(ev.data);
