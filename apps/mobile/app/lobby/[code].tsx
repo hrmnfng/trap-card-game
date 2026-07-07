@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import * as Clipboard from 'expo-clipboard';
@@ -7,6 +7,8 @@ import { gameStore } from '../../src/state/game';
 import { colors } from '../../src/lib/theme';
 import { Button, LinkButton } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
+import { RefreshButton } from '../../src/ui/RefreshButton';
+import { useRefresh } from '../../src/ui/useRefresh';
 import { useLobbyScreen } from '../../src/state/useLobbyScreen';
 
 const MIN_PLAYERS = 2;
@@ -14,6 +16,7 @@ const MIN_PLAYERS = 2;
 export default function LobbyScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const { userId, gameState, me, connectionStatus, error } = useLobbyScreen('lobby', code);
+  const { refreshing, onRefresh } = useRefresh();
 
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,11 +69,15 @@ export default function LobbyScreen() {
               ? "Can't reach the server — retrying…"
               : `Connection: ${connectionStatus}`}
         </Text>
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <FlatList
           style={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.muted} />
+          }
           data={players}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
