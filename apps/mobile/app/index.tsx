@@ -27,6 +27,8 @@ import {
   type LobbySortMode,
 } from '../src/lib/lobbies';
 import { Button, LinkButton } from '../src/ui/Button';
+import { RefreshButton } from '../src/ui/RefreshButton';
+import { useRefresh } from '../src/ui/useRefresh';
 import { Screen } from '../src/ui/Screen';
 import { VersionFooter } from '../src/ui/VersionFooter';
 import { Wordmark } from '../src/ui/Wordmark';
@@ -112,15 +114,22 @@ export default function HomeScreen() {
   //     Navigation focus events after browser back-navigation.
   // A duplicate fetch when both fire on the same navigation is a cheap
   // idempotent GET.
+  const fetchHistory = useCallback(async () => {
+    if (!isAuthenticated) return;
+    const items = await api.listLobbyHistory().catch(() => [] as LobbyHistoryItem[]);
+    setHistory(items);
+  }, [isAuthenticated]);
+
   const doFetchHistory = useCallback(() => {
     if (!isAuthenticated) return;
     setLoadingHistory(true);
-    api
-      .listLobbyHistory()
-      .then((items) => setHistory(items))
-      .catch(() => setHistory([]))
-      .finally(() => setLoadingHistory(false));
-  }, [isAuthenticated]);
+    void fetchHistory().finally(() => setLoadingHistory(false));
+  }, [isAuthenticated, fetchHistory]);
+
+  // Manual refresh (pull gesture on native, ↻ button on web) refetches through
+  // fetchHistory directly — skipping loadingHistory keeps the list on screen
+  // instead of collapsing it to the big spinner mid-pull.
+  const { refreshing, onRefresh, refreshControl } = useRefresh(fetchHistory);
 
   // Refresh on focus (fires on initial mount and on in-app navigation, e.g.
   // router.replace('/') from Leave). WebKit does not reliably emit focus events
@@ -227,17 +236,22 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Your lobbies</Text>
-          <Pressable testID="lobby-sort" onPress={cycleSort} hitSlop={8}>
-            <Text style={styles.sortLabel}>{LOBBY_SORT_LABELS[sortMode]} ⇅</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
+            <Pressable testID="lobby-sort" onPress={cycleSort} hitSlop={8}>
+              <Text style={styles.sortLabel}>{LOBBY_SORT_LABELS[sortMode]} ⇅</Text>
+            </Pressable>
+          </View>
         </View>
         {loadingHistory ? (
           <ActivityIndicator color={colors.muted} />
-        ) : history.length === 0 ? (
-          <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
         ) : (
           <SectionList
             style={styles.list}
+            refreshControl={refreshControl}
+            ListEmptyComponent={
+              <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
+            }
             sections={sections}
             keyExtractor={(item) => item.code}
             stickySectionHeadersEnabled={false}
@@ -318,6 +332,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionToggle: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   sortLabel: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   list: { flexGrow: 0, maxHeight: 240 },
   lobbyRow: {
