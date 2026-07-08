@@ -45,7 +45,7 @@ The legacy `frontend/` (Vue PWA) and `backend/` (FastAPI/Redis/Postgres) stacks 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **trap-card-game** (1507 symbols, 2488 relationships, 62 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **trap-card-game** (1613 symbols, 2763 relationships, 83 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

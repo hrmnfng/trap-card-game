@@ -203,4 +203,86 @@ describe('LobbyConnection', () => {
       vi.useRealTimers();
     }
   });
+
+  describe('reconnect', () => {
+    // The shared makeFakeSocket returns a single socket per setup(), so it
+    // can't observe reconnect opening a *second* socket; this factory-made
+    // recorder can — and it replays events so tests can fire a superseded
+    // socket's listeners after the replacement exists. Cast to RealtimeSocket
+    // at the factory (same precedent as makeFakeSocket) since the loose
+    // emit/addEventListener signatures don't satisfy the overloads.
+    class RecordingSocket {
+      closed = false;
+      private listeners: Record<string, Array<(ev?: unknown) => void>> = {};
+      send(): void {}
+      close(): void {
+        this.closed = true;
+      }
+      addEventListener(type: string, handler: (ev?: unknown) => void): void {
+        (this.listeners[type] ??= []).push(handler);
+      }
+      emit(type: string, ev?: unknown): void {
+        for (const h of this.listeners[type] ?? []) h(ev);
+      }
+    }
+
+    function recordingSetup() {
+      const sockets: RecordingSocket[] = [];
+      const conn = new LobbyConnection({
+        code: 'ABCD',
+        playerId: 'p1',
+        username: 'alice',
+        host: 'example.test',
+        socketFactory: () => {
+          const s = new RecordingSocket();
+          sockets.push(s);
+          return s as unknown as RealtimeSocket;
+        },
+      });
+      return { conn, sockets };
+    }
+
+    it('closes the old socket and opens a fresh one', () => {
+      const { conn, sockets } = recordingSetup();
+      conn.connect();
+      expect(sockets).toHaveLength(1);
+
+      conn.reconnect();
+      expect(sockets).toHaveLength(2);
+      expect(sockets[0]!.closed).toBe(true);
+      expect(conn.getStatus()).toBe('connecting');
+    });
+
+    it('is a plain connect when never connected', () => {
+      const { conn, sockets } = recordingSetup();
+      conn.reconnect();
+      expect(sockets).toHaveLength(1);
+    });
+
+    // PartySocket delivers close events asynchronously, so the old socket's
+    // close can land after reconnect() has already opened the replacement.
+    it("ignores a superseded socket's late close event", () => {
+      const { conn, sockets } = recordingSetup();
+      conn.connect();
+      conn.reconnect();
+      expect(conn.getStatus()).toBe('connecting');
+
+      sockets[0]!.emit('close');
+      expect(conn.getStatus()).toBe('connecting');
+    });
+
+    it('does not dispatch messages from a superseded socket', () => {
+      const { conn, sockets } = recordingSetup();
+      const received: ServerMessage[] = [];
+      conn.onMessage((m) => received.push(m));
+      conn.connect();
+      conn.reconnect();
+
+      sockets[0]!.emit('message', { data: JSON.stringify({ type: 'pong' }) });
+      expect(received).toEqual([]);
+
+      sockets[1]!.emit('message', { data: JSON.stringify({ type: 'pong' }) });
+      expect(received).toEqual([{ type: 'pong' }]);
+    });
+  });
 });

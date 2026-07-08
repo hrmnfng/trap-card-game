@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,23 +11,22 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { AnimatePresence, MotiView } from 'moti';
 import type { Card } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
-import { screenForState } from '../../src/lib/navigation';
+import { Button, LinkButton } from '../../src/ui/Button';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 import { PlayingCard } from '../../src/ui/PlayingCard';
 import { HistoryTimeline } from '../../src/ui/HistoryTimeline';
 import { IncomingReveal } from '../../src/ui/IncomingReveal';
 import { DURATION, useReducedMotion } from '../../src/ui/motion';
 import { Celebration } from '../../src/ui/Celebration';
 import { Screen } from '../../src/ui/Screen';
+import { RefreshButton } from '../../src/ui/RefreshButton';
+import { useRefresh } from '../../src/ui/useRefresh';
 
 export default function GameScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const lobbyCode = useGame((s) => s.lobbyCode);
+  const { userId, gameState } = useLobbyScreen('game', code);
+  const { refreshing, onRefresh, refreshControl } = useRefresh();
 
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
@@ -41,20 +40,6 @@ export default function GameScreen() {
     to: { x: number; y: number };
   } | null>(null);
   const reduce = useReducedMotion();
-
-  // Reconnect if this screen is opened directly (deep link / reload).
-  useEffect(() => {
-    if (code && userId && username && lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  const me = gameState?.players.find((p) => p.id === userId);
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
-    if (target !== 'game') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
@@ -104,7 +89,8 @@ export default function GameScreen() {
 
   return (
     <Screen style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} refreshControl={refreshControl}>
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         <Text style={styles.section}>Opponents</Text>
         <Text style={styles.hint}>
           {selectedCardId
@@ -181,15 +167,11 @@ export default function GameScreen() {
                 ? '🏆 You sprung all your traps first!'
                 : `🏆 ${winnerUsername ?? 'Someone'} sprung all their traps first`}
             </Text>
-            <Pressable style={styles.button} onPress={leave}>
-              <Text style={styles.buttonText}>Back to home</Text>
-            </Pressable>
+            <Button title="Back to home" onPress={leave} />
           </MotiView>
         </>
       ) : (
-        <Pressable style={styles.linkButton} onPress={leave}>
-          <Text style={styles.linkText}>Return to lobby</Text>
-        </Pressable>
+        <LinkButton title="Return to lobby" style={styles.returnLink} onPress={leave} />
       )}
 
       <View
@@ -269,15 +251,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   endedText: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 14 },
-  linkText: { color: colors.muted, fontSize: 14 },
+  returnLink: { paddingVertical: 14 },
   flightCard: {
     position: 'absolute',
     width: 34,

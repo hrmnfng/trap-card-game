@@ -7,23 +7,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { MAX_STATEMENT_LENGTH } from '@trap/shared';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
-import { PressableScale } from '../../src/ui/PressableScale';
+import { Button } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
-import { screenForState } from '../../src/lib/navigation';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 
 export default function PrepScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const lobbyCode = useGame((s) => s.lobbyCode);
-  const error = useGame((s) => s.error);
+  const { userId, gameState, hasSubmitted, error } = useLobbyScreen('prep', code);
 
   const cardsPerPlayer = gameState?.cardsPerPlayer ?? 3;
   const [statements, setStatements] = useState<string[]>([]);
@@ -37,23 +31,6 @@ export default function PrepScreen() {
       return next;
     });
   }, [cardsPerPlayer]);
-
-  // Reconnect if opened directly.
-  useEffect(() => {
-    if (code && userId && username && lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  const me = gameState?.players.find((p) => p.id === userId);
-  const hasSubmitted = me?.hasSubmitted ?? false;
-
-  // Route forward/back when status changes (game start, or back to lobby).
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, hasSubmitted);
-    if (target !== 'prep') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
@@ -104,14 +81,14 @@ export default function PrepScreen() {
         {hasSubmitted ? (
           <Text style={styles.submitted}>Submitted ✓</Text>
         ) : (
-          <PressableScale
+          <Button
             testID="submit-cards"
-            style={[styles.button, !allValid && styles.buttonDisabled]}
-            onPress={submit}
+            title="Submit cards"
+            variant="accent"
             disabled={!allValid}
-          >
-            <Text style={styles.buttonText}>Submit cards</Text>
-          </PressableScale>
+            style={styles.submitButton}
+            onPress={submit}
+          />
         )}
 
         <Text style={styles.section}>Players</Text>
@@ -135,16 +112,14 @@ export default function PrepScreen() {
       </ScrollView>
 
       {isOwner ? (
-        <PressableScale
+        <Button
           testID="begin-game"
-          style={[styles.button, styles.beginButton, !allSubmitted && styles.buttonDisabled]}
-          onPress={() => gameStore.getState().startGame()}
+          title={allSubmitted ? 'Begin game' : 'Waiting for all to submit'}
+          variant="accent"
           disabled={!allSubmitted}
-        >
-          <Text style={styles.buttonText}>
-            {allSubmitted ? 'Begin game' : 'Waiting for all to submit'}
-          </Text>
-        </PressableScale>
+          style={styles.beginButton}
+          onPress={() => gameStore.getState().startGame()}
+        />
       ) : (
         <Text style={styles.subtleFooter}>Waiting for the host to begin…</Text>
       )}
@@ -186,14 +161,6 @@ const styles = StyleSheet.create({
   playerName: { color: colors.text, fontSize: 15 },
   ready: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   notReady: { color: colors.muted, fontSize: 14 },
-  button: {
-    backgroundColor: colors.accent,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
+  submitButton: { marginTop: 12 },
   beginButton: { margin: 16, marginTop: 0 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
 });

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createGameStore, hitsOnMe, seenHitsKey } from './game';
-import { LobbyConnection, type RealtimeSocket } from '../lib/realtime';
-import type { GameHistoryItem, GameState } from '@trap/shared';
+import {
+  LobbyConnection,
+  type ConnectionStatus,
+  type RealtimeSocket,
+} from '../lib/realtime';
+import type { GameHistoryItem, GameState, ServerMessage } from '@trap/shared';
 
 function makeFakeSocket() {
   const listeners: Record<string, Array<(ev?: unknown) => void>> = {
@@ -221,5 +225,111 @@ describe('seenHitsKey', () => {
   it('is namespaced per lobby', () => {
     expect(seenHitsKey('ABCD')).toBe('seen_hits_ABCD');
     expect(seenHitsKey('WXYZ')).not.toBe(seenHitsKey('ABCD'));
+  });
+});
+
+/**
+ * Fake at the connection level (not the socket level like `makeFakeSocket`):
+ * refresh() branches on `getStatus()` and calls `requestState()` vs
+ * `reconnect()`, so the counters here assert the branch directly.
+ */
+class RefreshFakeConnection {
+  status: ConnectionStatus = 'open';
+  requested = 0;
+  reconnected = 0;
+  private handlers = new Set<(m: ServerMessage) => void>();
+
+  connect(): void {}
+  close(): void {}
+  getStatus(): ConnectionStatus {
+    return this.status;
+  }
+  onStatus(): () => void {
+    return () => {};
+  }
+  onMessage(h: (m: ServerMessage) => void): () => void {
+    this.handlers.add(h);
+    return () => this.handlers.delete(h);
+  }
+  emit(m: ServerMessage): void {
+    for (const h of this.handlers) h(m);
+  }
+  requestState(): void {
+    this.requested += 1;
+  }
+  reconnect(): void {
+    this.reconnected += 1;
+  }
+  startGame(): void {}
+  setReady(): void {}
+  startPrep(): void {}
+  submitCards(): void {}
+  playCard(): void {}
+}
+
+describe('refresh', () => {
+  function makeStore(conn: RefreshFakeConnection, timeoutMs = 5000) {
+    return createGameStore({
+      connectionFactory: () => conn as unknown as LobbyConnection,
+      refreshTimeoutMs: timeoutMs,
+    });
+  }
+
+  it('resolves immediately when there is no connection', async () => {
+    const store = createGameStore();
+    await expect(store.getState().refresh()).resolves.toBeUndefined();
+  });
+
+  it('on an open socket, sends get_state and resolves on the next state_update', async () => {
+    const conn = new RefreshFakeConnection();
+    const store = makeStore(conn);
+    store.getState().connect({ code: 'ABCD', playerId: 'p1', username: 'alice' });
+
+    let settled = false;
+    const p = store.getState().refresh().then(() => {
+      settled = true;
+    });
+    expect(conn.requested).toBe(1);
+    expect(conn.reconnected).toBe(0);
+    expect(settled).toBe(false);
+
+    conn.emit({ type: 'state_update', state: sampleState });
+    await p;
+    expect(settled).toBe(true);
+  });
+
+  // A pull while the socket is still connecting must not restart the attempt:
+  // the DO pushes state on connect anyway, so just wait (the cap still applies).
+  it('while connecting, waits for the pushed state instead of reconnecting', async () => {
+    const conn = new RefreshFakeConnection();
+    conn.status = 'connecting';
+    const store = makeStore(conn);
+    store.getState().connect({ code: 'ABCD', playerId: 'p1', username: 'alice' });
+
+    const p = store.getState().refresh();
+    expect(conn.requested).toBe(0);
+    expect(conn.reconnected).toBe(0);
+    conn.emit({ type: 'state_update', state: sampleState });
+    await p;
+  });
+
+  it('on a non-open socket, reconnects instead of requesting', async () => {
+    const conn = new RefreshFakeConnection();
+    conn.status = 'closed';
+    const store = makeStore(conn);
+    store.getState().connect({ code: 'ABCD', playerId: 'p1', username: 'alice' });
+
+    const p = store.getState().refresh();
+    expect(conn.reconnected).toBe(1);
+    expect(conn.requested).toBe(0);
+    conn.emit({ type: 'state_update', state: sampleState });
+    await p;
+  });
+
+  it('resolves via the timeout when no state_update ever arrives', async () => {
+    const conn = new RefreshFakeConnection();
+    const store = makeStore(conn, 20);
+    store.getState().connect({ code: 'ABCD', playerId: 'p1', username: 'alice' });
+    await expect(store.getState().refresh()).resolves.toBeUndefined();
   });
 });

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { registerAndLand, uniqueUser, vis } from './helpers';
+import { registerAndLand, startTwoPlayerGame, uniqueUser, vis } from './helpers';
 
 /**
  * A4 rows 3–6 plus the cross-device gameplay guarantees, end-to-end over two
@@ -20,61 +20,12 @@ test('two players: create/join, ready, prep, play, reconnect, and a winner', asy
   const guestCtx = await browser.newContext();
   const host = await hostCtx.newPage();
   const guest = await guestCtx.newPage();
-  const hostUser = uniqueUser('host');
-  const guestUser = uniqueUser('guest');
-
   try {
-    await registerAndLand(host, hostUser);
-    await registerAndLand(guest, guestUser);
-
-    // Host creates a lobby and lands on /lobby/<CODE>. Expo Router appends a
-    // `?__EXPO_ROUTER_key=` query string, so match the path (no `$` anchor) and
-    // read the code from the pathname only.
-    await vis(host.getByTestId('create-lobby')).click();
-    await host.waitForURL(/\/lobby\/[A-Z0-9]+/);
-    const code = new URL(host.url()).pathname.split('/lobby/')[1]!;
-    expect(code).toMatch(/^[A-Z0-9]+$/);
-
-    // Guest joins by code.
-    await vis(guest.getByPlaceholder('Lobby code')).fill(code);
-    await vis(guest.getByTestId('join-lobby')).click();
-    await guest.waitForURL(new RegExp(`/lobby/${code}`));
-
-    // Both clients see both players.
-    await expect(vis(host.getByText(guestUser))).toBeVisible();
-    await expect(vis(guest.getByText(hostUser))).toBeVisible();
-
-    // The guest is not the owner: no Start control, and the waiting hint shows.
-    await expect(vis(guest.getByTestId('start-game'))).toHaveCount(0);
-    await expect(
-      vis(guest.getByText('Waiting for the host to start…'))
-    ).toBeVisible();
-
-    // Both players ready up.
-    await vis(host.getByTestId('ready-toggle')).click();
-    await vis(guest.getByTestId('ready-toggle')).click();
-
-    // Owner starts prep; both land on the prep screen.
-    await expect(vis(host.getByTestId('start-game'))).toBeEnabled();
-    await vis(host.getByTestId('start-game')).click();
-    await host.waitForURL(new RegExp(`/prep/${code}`));
-    await guest.waitForURL(new RegExp(`/prep/${code}`));
-
-    // Each authors three statements and submits.
-    for (const page of [host, guest]) {
-      for (let i = 0; i < 3; i++) {
-        await vis(page.getByTestId(`statement-${i}`)).fill(`trap ${i + 1}`);
-      }
-      await vis(page.getByTestId('submit-cards')).click();
-    }
-
-    // Owner begins the game; both land on the game with a 3-card hand.
-    await expect(vis(host.getByTestId('begin-game'))).toBeEnabled();
-    await vis(host.getByTestId('begin-game')).click();
-    await host.waitForURL(new RegExp(`/game/${code}`));
-    await guest.waitForURL(new RegExp(`/game/${code}`));
-    await expect(vis(host.getByTestId('hand-card'))).toHaveCount(3);
-    await expect(vis(guest.getByTestId('hand-card'))).toHaveCount(3);
+    const { code, hostUser, guestUser } = await startTwoPlayerGame(host, guest, async () => {
+      // The guest is not the owner: no Start control, and the waiting hint shows.
+      await expect(vis(guest.getByTestId('start-game'))).toHaveCount(0);
+      await expect(vis(guest.getByText('Waiting for the host to start…'))).toBeVisible();
+    });
 
     // Host plays a card on the opponent.
     await vis(host.getByTestId('hand-card')).first().click();

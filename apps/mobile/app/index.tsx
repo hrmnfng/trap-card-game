@@ -26,8 +26,11 @@ import {
   LOBBY_SORT_LABELS,
   type LobbySortMode,
 } from '../src/lib/lobbies';
-import { PressableScale } from '../src/ui/PressableScale';
+import { Button, LinkButton } from '../src/ui/Button';
+import { RefreshButton } from '../src/ui/RefreshButton';
+import { useRefresh } from '../src/ui/useRefresh';
 import { Screen } from '../src/ui/Screen';
+import { VersionFooter } from '../src/ui/VersionFooter';
 import { Wordmark } from '../src/ui/Wordmark';
 
 /** Persisted preference key for whether completed lobbies are revealed. */
@@ -111,15 +114,22 @@ export default function HomeScreen() {
   //     Navigation focus events after browser back-navigation.
   // A duplicate fetch when both fire on the same navigation is a cheap
   // idempotent GET.
+  const fetchHistory = useCallback(async () => {
+    if (!isAuthenticated) return;
+    const items = await api.listLobbyHistory().catch(() => [] as LobbyHistoryItem[]);
+    setHistory(items);
+  }, [isAuthenticated]);
+
   const doFetchHistory = useCallback(() => {
     if (!isAuthenticated) return;
     setLoadingHistory(true);
-    api
-      .listLobbyHistory()
-      .then((items) => setHistory(items))
-      .catch(() => setHistory([]))
-      .finally(() => setLoadingHistory(false));
-  }, [isAuthenticated]);
+    void fetchHistory().finally(() => setLoadingHistory(false));
+  }, [isAuthenticated, fetchHistory]);
+
+  // Manual refresh (pull gesture on native, ↻ button on web) refetches through
+  // fetchHistory directly — skipping loadingHistory keeps the list on screen
+  // instead of collapsing it to the big spinner mid-pull.
+  const { refreshing, onRefresh, refreshControl } = useRefresh(fetchHistory);
 
   // Refresh on focus (fires on initial mount and on in-app navigation, e.g.
   // router.replace('/') from Leave). WebKit does not reliably emit focus events
@@ -157,15 +167,14 @@ export default function HomeScreen() {
   if (!isAuthenticated) {
     return (
       <Screen style={styles.container}>
-        <Wordmark />
-        <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
-        <Pressable
-          testID="signin-cta"
-          style={styles.button}
-          onPress={() => router.push('/login')}
-        >
-          <Text style={styles.buttonText}>Sign in / Register</Text>
-        </Pressable>
+        {/* flex-1 wrapper keeps the CTA stack centered while the footer pins to
+            the bottom, matching login and the authenticated Home. */}
+        <View style={styles.signinHero}>
+          <Wordmark />
+          <Text style={styles.subtle}>Sign in to create or join a lobby.</Text>
+          <Button testID="signin-cta" title="Sign in / Register" onPress={() => router.push('/login')} />
+        </View>
+        <VersionFooter />
       </Screen>
     );
   }
@@ -218,28 +227,31 @@ export default function HomeScreen() {
       >
         <Text style={styles.heading}>Welcome, {username}</Text>
 
-        <PressableScale
+        <Button
           testID="create-lobby"
-          style={[styles.button, creating && styles.buttonDisabled]}
-          onPress={createLobby}
+          title={creating ? 'Creating…' : 'Create lobby'}
           disabled={creating}
-        >
-          <Text style={styles.buttonText}>{creating ? 'Creating…' : 'Create lobby'}</Text>
-        </PressableScale>
+          onPress={createLobby}
+        />
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionLabel}>Your lobbies</Text>
-          <Pressable testID="lobby-sort" onPress={cycleSort} hitSlop={8}>
-            <Text style={styles.sortLabel}>{LOBBY_SORT_LABELS[sortMode]} ⇅</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
+            <Pressable testID="lobby-sort" onPress={cycleSort} hitSlop={8}>
+              <Text style={styles.sortLabel}>{LOBBY_SORT_LABELS[sortMode]} ⇅</Text>
+            </Pressable>
+          </View>
         </View>
         {loadingHistory ? (
           <ActivityIndicator color={colors.muted} />
-        ) : history.length === 0 ? (
-          <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
         ) : (
           <SectionList
             style={styles.list}
+            refreshControl={refreshControl}
+            ListEmptyComponent={
+              <Text style={styles.subtle}>No lobbies yet — create or join one below.</Text>
+            }
             sections={sections}
             keyExtractor={(item) => item.code}
             stickySectionHeadersEnabled={false}
@@ -286,38 +298,22 @@ export default function HomeScreen() {
             value={joinCode}
             onChangeText={setJoinCode}
           />
-          <Pressable testID="join-lobby" style={styles.button} onPress={joinLobby}>
-            <Text style={styles.buttonText}>Join</Text>
-          </Pressable>
+          <Button testID="join-lobby" title="Join" style={styles.joinButton} onPress={joinLobby} />
         </View>
 
-        <Pressable
-          testID="logout"
-          style={styles.linkButton}
-          onPress={() => {
-            void authStore.getState().logout();
-          }}
-        >
-          <Text style={styles.linkText}>Log out</Text>
-        </Pressable>
+        <LinkButton testID="logout" title="Log out" onPress={() => { void authStore.getState().logout(); }} />
       </MotiView>
+      <VersionFooter />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
+  signinHero: { flex: 1, justifyContent: 'center', gap: 16 },
   heading: { color: colors.text, fontSize: 28, fontWeight: '700' },
   subtle: { color: colors.muted, fontSize: 16 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  joinButton: { paddingHorizontal: 20 },
   sectionLabel: { color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 8 },
   sectionHeader: {
     color: colors.muted,
@@ -336,6 +332,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionToggle: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   sortLabel: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   list: { flexGrow: 0, maxHeight: 240 },
   lobbyRow: {
@@ -361,6 +358,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  linkButton: { alignItems: 'center', paddingVertical: 8 },
-  linkText: { color: colors.muted, fontSize: 14 },
 });

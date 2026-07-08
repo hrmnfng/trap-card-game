@@ -4,23 +4,19 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { MotiView } from 'moti';
 import * as Clipboard from 'expo-clipboard';
 import { gameStore } from '../../src/state/game';
-import { useAuth, useGame } from '../../src/state/hooks';
 import { colors } from '../../src/lib/theme';
-import { PressableScale } from '../../src/ui/PressableScale';
+import { Button, LinkButton } from '../../src/ui/Button';
 import { Screen } from '../../src/ui/Screen';
-import { screenForState } from '../../src/lib/navigation';
+import { RefreshButton } from '../../src/ui/RefreshButton';
+import { useRefresh } from '../../src/ui/useRefresh';
+import { useLobbyScreen } from '../../src/ui/useLobbyScreen';
 
 const MIN_PLAYERS = 2;
 
 export default function LobbyScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const userId = useAuth((s) => s.userId);
-  const username = useAuth((s) => s.username);
-
-  const gameState = useGame((s) => s.gameState);
-  const connectionStatus = useGame((s) => s.connectionStatus);
-  const lobbyCode = useGame((s) => s.lobbyCode);
-  const error = useGame((s) => s.error);
+  const { userId, gameState, me, connectionStatus, error } = useLobbyScreen('lobby', code);
+  const { refreshing, onRefresh, refreshControl } = useRefresh();
 
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,21 +35,6 @@ export default function LobbyScreen() {
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!code || !userId || !username) return;
-    if (lobbyCode !== code) {
-      gameStore.getState().connect({ code, playerId: userId, username });
-    }
-  }, [code, userId, username, lobbyCode]);
-
-  // Advance to prep/game when the status moves on.
-  const me = gameState?.players.find((p) => p.id === userId);
-  useEffect(() => {
-    if (!gameState || !code) return;
-    const target = screenForState(gameState.status, me?.hasSubmitted ?? false);
-    if (target !== 'lobby') router.replace(`/${target}/${code}`);
-  }, [gameState?.status, me?.hasSubmitted, code]);
 
   if (!userId) return <Redirect href="/login" />;
 
@@ -88,11 +69,13 @@ export default function LobbyScreen() {
               ? "Can't reach the server — retrying…"
               : `Connection: ${connectionStatus}`}
         </Text>
+        <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
         <Text style={styles.subtle}>This game: {cardsPerPlayer} cards each</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <FlatList
           style={styles.list}
+          refreshControl={refreshControl}
           data={players}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
@@ -111,36 +94,34 @@ export default function LobbyScreen() {
           ListEmptyComponent={<Text style={styles.subtle}>Waiting for players…</Text>}
         />
 
-        <PressableScale
+        <Button
           testID="ready-toggle"
-          style={[styles.button, iAmReady && styles.buttonSecondary]}
+          title={iAmReady ? "I'm not ready" : "I'm ready"}
+          variant={iAmReady ? 'surface' : 'accent'}
+          style={styles.stackedButton}
           onPress={() => gameStore.getState().setReady(!iAmReady)}
-        >
-          <Text style={styles.buttonText}>{iAmReady ? "I'm not ready" : "I'm ready"}</Text>
-        </PressableScale>
+        />
 
         {isOwner ? (
-          <PressableScale
+          <Button
             testID="start-game"
-            style={[styles.button, !canStart && styles.buttonDisabled]}
-            onPress={() => gameStore.getState().startPrep()}
-            disabled={!canStart}
-          >
-            <Text style={styles.buttonText}>
-              {canStart
+            title={
+              canStart
                 ? 'Start (author cards)'
                 : players.length < MIN_PLAYERS
                   ? `Need ${MIN_PLAYERS}+ players`
-                  : 'Waiting for all to ready'}
-            </Text>
-          </PressableScale>
+                  : 'Waiting for all to ready'
+            }
+            variant="accent"
+            disabled={!canStart}
+            style={styles.stackedButton}
+            onPress={() => gameStore.getState().startPrep()}
+          />
         ) : (
           <Text style={styles.subtle}>Waiting for the host to start…</Text>
         )}
 
-        <Pressable style={styles.linkButton} onPress={leave}>
-          <Text style={styles.linkText}>Leave lobby</Text>
-        </Pressable>
+        <LinkButton title="Leave lobby" onPress={leave} />
       </MotiView>
     </Screen>
   );
@@ -167,16 +148,5 @@ const styles = StyleSheet.create({
   ready: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   notReady: { color: colors.muted, fontSize: 14 },
   subtle: { color: colors.muted, fontSize: 14 },
-  button: {
-    backgroundColor: colors.accent,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonSecondary: { backgroundColor: colors.surface },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  linkButton: { alignItems: 'center', paddingVertical: 8 },
-  linkText: { color: colors.muted, fontSize: 14 },
+  stackedButton: { marginTop: 8 },
 });

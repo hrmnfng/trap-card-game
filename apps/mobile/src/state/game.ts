@@ -49,6 +49,14 @@ export interface GameStoreState {
   playCard(cardId: string, targetPlayerId: string): void;
   requestState(): void;
   exit(): void;
+  /**
+   * Force a sync: on an open socket, request fresh state; while connecting,
+   * just wait (the DO pushes state on connect); otherwise reconnect. Resolves
+   * when the next `state_update` arrives — or after `refreshTimeoutMs` so a
+   * spinner can never hang. Never rejects. Resolves immediately when there is
+   * no connection (post-exit).
+   */
+  refresh(): Promise<void>;
 }
 
 export type ConnectionFactory = (options: LobbyConnectionOptions) => LobbyConnection;
@@ -56,6 +64,8 @@ export type ConnectionFactory = (options: LobbyConnectionOptions) => LobbyConnec
 export interface GameStoreDeps {
   /** Overridable so tests can inject a connection backed by a fake socket. */
   connectionFactory?: ConnectionFactory;
+  /** Refresh promise cap (ms). Overridable for tests. Default 5000. */
+  refreshTimeoutMs?: number;
 }
 
 const defaultConnectionFactory: ConnectionFactory = (options) =>
@@ -97,6 +107,7 @@ function reduce(
 
 export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreState> {
   const connectionFactory = deps.connectionFactory ?? defaultConnectionFactory;
+  const refreshTimeoutMs = deps.refreshTimeoutMs ?? 5000;
   let connection: LobbyConnection | null = null;
 
   return createStore<GameStoreState>((set) => ({
@@ -148,6 +159,31 @@ export function createGameStore(deps: GameStoreDeps = {}): StoreApi<GameStoreSta
 
     requestState() {
       connection?.requestState();
+    },
+
+    refresh() {
+      const conn = connection;
+      if (!conn) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        let done = false;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        const unsubscribe = conn.onMessage((message) => {
+          if (message.type === 'state_update') finish();
+        });
+        function finish(): void {
+          if (done) return;
+          done = true;
+          if (timer) clearTimeout(timer);
+          unsubscribe();
+          resolve();
+        }
+        timer = setTimeout(finish, refreshTimeoutMs);
+        const status = conn.getStatus();
+        if (status === 'open') conn.requestState();
+        // 'connecting': an attempt is already in flight and the DO pushes
+        // state on connect — reconnecting here would only restart it.
+        else if (status !== 'connecting') conn.reconnect();
+      });
     },
 
     exit() {

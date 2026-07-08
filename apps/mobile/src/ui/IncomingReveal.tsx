@@ -9,7 +9,7 @@
  * information), without flip/cascade movement.
  */
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { MotiView } from 'moti';
 import type { GameState } from '@trap/shared';
 import { colors } from '../lib/theme';

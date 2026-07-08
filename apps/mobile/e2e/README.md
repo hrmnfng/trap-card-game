@@ -30,6 +30,13 @@ is fine):
 
 First run is slow (Metro's initial web bundle); subsequent runs are ~8s.
 
+**After changing `app.json` / `app.config.js`, start the web server once with
+`npx expo start --web --clear`** (or clear Metro's cache another way): the
+serialized app config that `expo-constants` reads is inlined by a Babel
+transform whose cache does not key on config changes, so a reused cache serves
+the old config (the version footer's `extra.appVersion` comes through this
+path). Fresh CI runners are unaffected; `release.yml` exports with `--clear`.
+
 ## Coverage
 
 - `auth.spec.ts` — register → authenticated Home; logout → login round-trip.
